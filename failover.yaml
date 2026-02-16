@@ -48,7 +48,7 @@
 
     - name: Get groups (to find CG/group UID)
       ansible.builtin.uri:
-        url: "https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/groups"
+        url: "https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/groups/information"
         method: GET
         user: "{{ rp_user }}"
         password: "{{ rp_pass }}"
