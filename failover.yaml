@@ -1,0 +1,137 @@
+---
+- name: CG Failover
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # vRPA that exposes /fapi
+    vrpa_host: "192.168.85.158"            # vRPA management IP/DNS
+    vrpa_port: 443                   # many installs use 443; change if yours differs
+    fapi_version: "5_2"              # example from Dell API examples
+
+    rp_user: "admin"               # your RP username
+    rp_pass: "Nable@123"         # store in AAP credential / Vault
+    validate_certs: false
+
+    # What to fail over
+    cg_name: "Test_CG"
+
+    # Where to fail over TO (DR-side RP cluster name as returned by /clusters)
+    dr_cluster_name: "cluster2"
+
+    # Failover options
+    start_transfer_after_failover: true
+    use_predefined_failover_networks: true
+
+  tasks:
+    - name: Get clusters (to find DR cluster UID)
+      ansible.builtin.uri:
+        url: "https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/clusters"
+        method: GET
+        user: "{{ rp_user }}"
+        password: "{{ rp_pass }}"
+        force_basic_auth: true
+        validate_certs: "{{ validate_certs }}"
+        return_content: true
+      register: clusters_rsp
+
+    - name: Set DR cluster UID from name
+      ansible.builtin.set_fact:
+        dr_cluster_uid: >-
+          {{
+            (
+              clusters_rsp.json.clustersInformation
+              | selectattr('clusterName', 'equalto', dr_cluster_name)
+              | list | first
+            ).clusterUID.id
+          }}
+
+    - name: Get groups (to find CG/group UID)
+      ansible.builtin.uri:
+        url: "https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/groups"
+        method: GET
+        user: "{{ rp_user }}"
+        password: "{{ rp_pass }}"
+        force_basic_auth: true
+        validate_certs: "{{ validate_certs }}"
+        return_content: true
+      register: groups_rsp
+
+    - name: Set group UID from CG name
+      ansible.builtin.set_fact:
+        group_uid: >-
+          {{
+            (
+              groups_rsp.json.groupsInformation
+              | selectattr('name', 'equalto', cg_name)
+              | list | first
+            ).groupUID.id
+          }}
+
+    # Dell guidance for copyId: GET /groups/{groupId}/settings :contentReference[oaicite:1]{index=1}
+    - name: Get group settings (to find copyId for DR copy)
+      ansible.builtin.uri:
+        url: "https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/groups/{{ group_uid }}/settings"
+        method: GET
+        user: "{{ rp_user }}"
+        password: "{{ rp_pass }}"
+        force_basic_auth: true
+        validate_certs: "{{ validate_certs }}"
+        return_content: true
+      register: group_settings_rsp
+
+    - name: Pick DR copyId for this group (matches DR cluster UID)
+      ansible.builtin.set_fact:
+        dr_copy_id: >-
+          {{
+            (
+              group_settings_rsp.json.groupCopiesSettings
+              | selectattr('clusterUID.id', 'equalto', dr_cluster_uid)
+              | list | first
+            ).copyUID.copyId
+          }}
+
+    - name: Show discovered IDs (safe)
+      ansible.builtin.debug:
+        msg:
+          cg_name: "{{ cg_name }}"
+          group_uid: "{{ group_uid }}"
+          dr_cluster_name: "{{ dr_cluster_name }}"
+          dr_cluster_uid: "{{ dr_cluster_uid }}"
+          dr_copy_id: "{{ dr_copy_id }}"
+
+    # Dell: failover requires Test / Image Access first :contentReference[oaicite:2]{index=2}
+    - name: Enable image access on latest snapshot for DR copy (required before failover)
+      ansible.builtin.uri:
+        url: >-
+          https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/groups/{{ group_uid }}/clusters/{{ dr_cluster_uid }}/copies/{{ dr_copy_id }}/image_access/latest/enable
+        method: PUT
+        user: "{{ rp_user }}"
+        password: "{{ rp_pass }}"
+        force_basic_auth: true
+        validate_certs: "{{ validate_certs }}"
+        status_code: [200, 202, 204]
+      register: image_access_rsp
+
+    # Dell failover example endpoint: /groups/<gid>/clusters/<cid>/copies/<copyId>/failover?... :contentReference[oaicite:3]{index=3}
+    - name: Failover CG to DR copy
+      ansible.builtin.uri:
+        url: >-
+          https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/groups/{{ group_uid }}/clusters/{{ dr_cluster_uid }}/copies/{{ dr_copy_id }}/failover
+          ?startTransfer={{ 'true' if start_transfer_after_failover else 'false' }}
+          &usePredefinedFailoverNetworks={{ 'true' if use_predefined_failover_networks else 'false' }}
+        method: PUT
+        user: "{{ rp_user }}"
+        password: "{{ rp_pass }}"
+        force_basic_auth: true
+        validate_certs: "{{ validate_certs }}"
+        status_code: [200, 202, 204]
+      register: failover_rsp
+
+    - name: Confirm failover request submitted
+      ansible.builtin.debug:
+        msg:
+          image_access_status: "{{ image_access_rsp.status }}"
+          failover_status: "{{ failover_rsp.status }}"
+          note: >-
+            Failover submitted. In the UI you can monitor Recovery Activities until 100%/ready-for-next-action.
