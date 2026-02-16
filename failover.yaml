@@ -14,7 +14,7 @@
     validate_certs: false
 
     # What to fail over
-    cg_name: "220310418"
+    cg_name: "Test_CG"
 
     # Where to fail over TO (DR-side RP cluster name as returned by /clusters)
     dr_cluster_name: "clsuter2"
