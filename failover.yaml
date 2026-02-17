@@ -87,7 +87,7 @@
           {{
             (
               group_settings_rsp.json.groupCopiesSettings
-              | selectattr('copyUID.globalCopyUID.clusterUID.id', 'equalto', (dr_cluster_uid | int))
+              | selectattr('copyUID.globalCopyUID.clusterUID.id', 'equalto', (dr_cluster_uid | string))
               | list | first
             ).copyUID.globalCopyUID.copyUID
            }}
