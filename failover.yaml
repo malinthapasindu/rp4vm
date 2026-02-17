@@ -106,7 +106,7 @@
       ansible.builtin.uri:
         url: >-
           https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/groups/{{ group_uid }}/clusters/527426144870705900/copies/{{ dr_copy_id }}/image_access/latest/enable
-        method: POST
+        method: PUT
         user: "{{ rp_user }}"
         password: "{{ rp_pass }}"
         force_basic_auth: true
