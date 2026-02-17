@@ -87,9 +87,9 @@
           {{
             (
               group_settings_rsp.json.groupCopiesSettings
-              | selectattr('globalCopyUID.clusterUID.id', 'equalto', dr_cluster_uid)
+              | selectattr('clusterUID.id', 'equalto', dr_cluster_uid)
               | list | first
-            ).copyUID.copyId
+            ).copyUID.globalCopyUID.clusterUID.id
           }}
 
     - name: Show discovered IDs (safe)
