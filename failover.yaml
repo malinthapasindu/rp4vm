@@ -44,7 +44,7 @@
               clusters_rsp.json.clustersInformation
               | selectattr('clusterName', 'equalto', dr_cluster_name)
               | list | first
-            ).clusterUID.id
+            ).clusterUID.id | string
           }}
 
     - name: Get groups (to find CG/group UID)
