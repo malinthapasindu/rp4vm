@@ -111,6 +111,11 @@
         password: "{{ rp_pass }}"
         force_basic_auth: true
         validate_certs: "{{ validate_certs }}"
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body: "{}"
+        body_format: json
         status_code: [200, 202, 204]
       register: image_access_rsp
 
