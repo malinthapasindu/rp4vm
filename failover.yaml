@@ -18,6 +18,7 @@
 
     # Where to fail over TO (DR-side RP cluster name as returned by /clusters)
     dr_cluster_name: "clsuter2"
+    dr_cluster_uid: "527426144870705900"
 
     # Failover options
     start_transfer_after_failover: true
