@@ -81,16 +81,16 @@
         return_content: true
       register: group_settings_rsp
 
-- name: Pick DR copyId for this group (matches DR cluster UID)
-  ansible.builtin.set_fact:
-    dr_copy_id: >-
-      {{
-        (
-          group_settings_rsp.json.groupCopiesSettings
-          | selectattr('copyUID.globalCopyUID.clusterUID.id', 'equalto', (dr_cluster_uid | int))
-          | list | first
-        ).copyUID.globalCopyUID.copyUID
-      }}
+    - name: Pick DR copyId for this group (matches DR cluster UID)
+      ansible.builtin.set_fact:
+        dr_copy_id: >-
+          {{
+            (
+              group_settings_rsp.json.groupCopiesSettings
+              | selectattr('copyUID.globalCopyUID.clusterUID.id', 'equalto', (dr_cluster_uid | int))
+              | list | first
+            ).copyUID.globalCopyUID.copyUID
+           }}
 
     - name: Show discovered IDs (safe)
       ansible.builtin.debug:
