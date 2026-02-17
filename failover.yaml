@@ -62,7 +62,7 @@
         group_uid: >-
           {{
             (
-              groups_rsp.json.groupsInformation
+              groups_rsp.json.innerSet
               | selectattr('name', 'equalto', cg_name)
               | list | first
             ).groupUID.id
