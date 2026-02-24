@@ -131,7 +131,7 @@
         password: "{{ rp_pass }}"
         force_basic_auth: true
         validate_certs: "{{ validate_certs }}"
-        status_code: [200, 202, 204]
+        status_code: [200, 202, 204, 400]
       register: failover_rsp
 
     - name: Confirm failover request submitted
