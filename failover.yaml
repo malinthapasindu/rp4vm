@@ -104,7 +104,7 @@
     # Dell: failover requires Test / Image Access first :contentReference[oaicite:2]{index=2}
     - name: Enable image access on latest snapshot for DR copy (required before failover)
       ansible.builtin.uri:
-        url: https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/groups/{{ group_uid }}/clusters/527426144870705900/copies/{{ dr_copy_id }}/image_access/latest/enable
+        url: https://{{ vrpa_host }}:{{ vrpa_port }}/fapi/rest/{{ fapi_version }}/groups/{{ group_uid }}/clusters/527426144870705946/copies/{{ dr_copy_id }}/image_access/latest/enable
         method: PUT
         user: "{{ rp_user }}"
         password: "{{ rp_pass }}"
