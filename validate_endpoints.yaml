@@ -5,17 +5,17 @@
 
   vars:
     dc_rp4vm_host: >-
-      {{ hostvars[groups['dc_rp4vm'][0]]['ansible_host'] }}
+      {{ hostvars[groups['DC RP4VM'][0]]['ansible_host'] }}
 
     dr_rp4vm_host: >-
-      {{ hostvars[groups['dr_rp4vm'][0]]['ansible_host'] }}
+      {{ hostvars[groups['DR RP4VM'][0]]['ansible_host'] }}
 
   tasks:
     - name: Validate inventory groups
       ansible.builtin.assert:
         that:
-          - groups['dc_rp4vm'] | length == 1
-          - groups['dr_rp4vm'] | length == 1
+          - groups['DC RP4VM'] | length == 1
+          - groups['DR RP4VM'] | length == 1
         fail_msg: >-
           The inventory must contain one DC RP4VM host and one DR RP4VM host.
 
