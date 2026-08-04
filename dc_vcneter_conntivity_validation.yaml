@@ -1,0 +1,21 @@
+---
+- name: Validate production vCenter
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+    - name: Validate vCenter connectivity
+      community.vmware.vmware_about_info:
+        hostname: "{{ dc_vcenter_hostname }}"
+        username: "{{ dc_vcenter_username }}"
+        password: "{{ dc_vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: vcenter_info
+
+    - name: Display vCenter details
+      ansible.builtin.debug:
+        msg:
+          - "vCenter version: {{ vcenter_info.about_info.version }}"
+          - "Build: {{ vcenter_info.about_info.build }}"
+          - "Product: {{ vcenter_info.about_info.full_name }}"
