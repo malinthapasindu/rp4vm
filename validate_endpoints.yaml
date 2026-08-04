@@ -3,24 +3,40 @@
   hosts: localhost
   gather_facts: false
 
-  vars:
-    dc_rp4vm_host: >-
-      {{ hostvars[groups['dc_rp4vm'][0]]['dc_rp4vm_cluster'] }}
-
-    dr_rp4vm_host: >-
-      {{ hostvars[groups['dr_rp4vm'][0]]['dr_rp4vm_cluster'] }}
-
   tasks:
     - name: Validate inventory groups
       ansible.builtin.assert:
         that:
-          - groups['dc_rp4vm'] | length == 1
-          - groups['dr_rp4vm'] | length == 1
+          - groups.get('dc_rp4vm', []) | length == 1
+          - groups.get('dr_rp4vm', []) | length == 1
         fail_msg: >-
-          The inventory must contain one DC RP4VM host and one DR RP4VM host.
+          The inventory must contain exactly one host in the dc_rp4vm group
+          and exactly one host in the dr_rp4vm group.
+
+    - name: Get inventory host names
+      ansible.builtin.set_fact:
+        dc_rp4vm_inventory_host: "{{ groups['dc_rp4vm'][0] }}"
+        dr_rp4vm_inventory_host: "{{ groups['dr_rp4vm'][0] }}"
+
+    - name: Validate ansible_host variables
+      ansible.builtin.assert:
+        that:
+          - hostvars[dc_rp4vm_inventory_host]['ansible_host'] is defined
+          - hostvars[dr_rp4vm_inventory_host]['ansible_host'] is defined
+        fail_msg: >-
+          The ansible_host variable is missing from the DC or DR RP4VM host.
+
+    - name: Set RP4VM endpoint variables
+      ansible.builtin.set_fact:
+        dc_rp4vm_host: >-
+          {{ hostvars[dc_rp4vm_inventory_host]['ansible_host'] }}
+        dr_rp4vm_host: >-
+          {{ hostvars[dr_rp4vm_inventory_host]['ansible_host'] }}
 
     - name: Display configured endpoints
       ansible.builtin.debug:
         msg:
+          - "DC inventory host: {{ dc_rp4vm_inventory_host }}"
           - "DC RP4VM endpoint: {{ dc_rp4vm_host }}"
+          - "DR inventory host: {{ dr_rp4vm_inventory_host }}"
           - "DR RP4VM endpoint: {{ dr_rp4vm_host }}"
