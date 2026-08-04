@@ -1,61 +1,57 @@
 ---
-- name: Validate DC vCenter connectivity
+- name: Validate DC vCenter connectivity and authentication
   hosts: localhost
   gather_facts: false
 
   tasks:
-    - name: Validate injected DC vCenter credential variables
+    - name: Validate vCenter credential variables
       ansible.builtin.assert:
         that:
           - vcenter_host is defined
           - vcenter_host | length > 0
-          - vcenter_port is defined
           - vcenter_username is defined
           - vcenter_username | length > 0
           - vcenter_password is defined
           - vcenter_password | length > 0
-          - validate_certs is defined
         fail_msg: >-
-          DC vCenter credentials were not injected.
+          vCenter credential variables are missing.
           Attach the 'DC vCenter' credential to the AAP Job Template.
-        success_msg: "DC vCenter credential variables were injected successfully."
       no_log: true
 
-    - name: Validate TCP connectivity to vCenter API port
-      ansible.builtin.wait_for:
-        host: "{{ vcenter_host }}"
-        port: "{{ vcenter_port | int }}"
-        state: started
-        timeout: 15
-        connect_timeout: 5
-      register: vcenter_tcp_check
+    - name: Ping the DC vCenter
+      ansible.builtin.command:
+        cmd: "ping -c 4 -W 2 {{ vcenter_host }}"
+      register: vcenter_ping
+      changed_when: false
+      failed_when: false
 
-    - name: Validate vCenter API response
-      ansible.builtin.assert:
-        that:
-          - vcenter_about.about_info is defined
-          - vcenter_about.about_info.version is defined
-        fail_msg: >-
-          Connected to {{ vcenter_host }}:{{ vcenter_port }},
-          but vCenter API authentication or information retrieval failed.
-        success_msg: >-
-          Successfully authenticated to DC vCenter
-          {{ vcenter_host }}:{{ vcenter_port }}.
+    - name: Display ping result
+      ansible.builtin.debug:
+        msg: >-
+          DC vCenter ping connectivity:
+          {{ 'SUCCESS' if vcenter_ping.rc == 0 else 'FAILED' }}
 
-    - name: Display DC vCenter connectivity result
+    - name: Stop when ping fails
+      ansible.builtin.fail:
+        msg: >-
+          Ping to DC vCenter {{ vcenter_host }} failed.
+          Check DNS, routing, firewall, or whether ICMP is disabled.
+      when: vcenter_ping.rc != 0
+
+    - name: Validate vCenter authentication
+      community.vmware.vmware_about_info:
+        hostname: "{{ vcenter_host }}"
+        port: "{{ vcenter_port | default('443') | int }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs | default(false) | bool }}"
+      register: vcenter_auth
+      no_log: true
+
+    - name: Display authentication result
       ansible.builtin.debug:
         msg:
-          - "DC vCenter connectivity: Successful"
-          - "vCenter address: {{ vcenter_host }}"
-          - "vCenter API port: {{ vcenter_port }}"
-          - "API type: {{ vcenter_about.about_info.api_type | default('Unknown') }}"
-          - "API version: {{ vcenter_about.about_info.api_version | default('Unknown') }}"
-
-    - name: Publish vCenter validation result to AAP workflow
-      ansible.builtin.set_stats:
-        data:
-          dc_vcenter_validation: "successful"
-          dc_vcenter_host: "{{ vcenter_host }}"
-          dc_vcenter_version: "{{ vcenter_about.about_info.version | default('Unknown') }}"
-          dc_vcenter_build: "{{ vcenter_about.about_info.build | default('Unknown') }}"
-        per_host: false
+          - "DC vCenter ping connectivity: SUCCESS"
+          - "DC vCenter authentication: SUCCESS"
+          - "vCenter: {{ vcenter_host }}"
+          - "Version: {{ vcenter_auth.about_info.version | default('Unknown') }}"
