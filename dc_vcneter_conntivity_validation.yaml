@@ -15,43 +15,62 @@
           - vcenter_password | length > 0
         fail_msg: >-
           vCenter credential variables are missing.
-          Attach the 'DC vCenter' credential to the AAP Job Template.
+          Attach the DC vCenter credential to the Job Template.
       no_log: true
 
-    - name: Ping the DC vCenter
+    - name: Test ping connectivity to vCenter
       ansible.builtin.command:
         cmd: "ping -c 4 -W 2 {{ vcenter_host }}"
       register: vcenter_ping
       changed_when: false
       failed_when: false
 
-    - name: Display ping result
+    - name: Display ping connectivity result
       ansible.builtin.debug:
         msg: >-
-          DC vCenter ping connectivity:
+          Ping connectivity to {{ vcenter_host }}:
           {{ 'SUCCESS' if vcenter_ping.rc == 0 else 'FAILED' }}
 
-    - name: Stop when ping fails
+    - name: Fail when ping connectivity is unavailable
       ansible.builtin.fail:
         msg: >-
-          Ping to DC vCenter {{ vcenter_host }} failed.
-          Check DNS, routing, firewall, or whether ICMP is disabled.
+          Ping to vCenter {{ vcenter_host }} failed.
+          Check DNS, routing, firewall, or ICMP settings.
       when: vcenter_ping.rc != 0
 
-    - name: Validate vCenter authentication
-      community.vmware.vmware_about_info:
-        hostname: "{{ vcenter_host }}"
-        port: "{{ vcenter_port | default('443') | int }}"
-        username: "{{ vcenter_username }}"
+    - name: Authenticate to vCenter REST API
+      ansible.builtin.uri:
+        url: >-
+          https://{{ vcenter_host }}:
+          {{ vcenter_port | default('443') }}/api/session
+        method: POST
+        user: "{{ vcenter_username }}"
         password: "{{ vcenter_password }}"
+        force_basic_auth: true
         validate_certs: "{{ validate_certs | default(false) | bool }}"
-      register: vcenter_auth
+        return_content: true
+        status_code: 201
+      register: vcenter_session
       no_log: true
 
     - name: Display authentication result
       ansible.builtin.debug:
         msg:
-          - "DC vCenter ping connectivity: SUCCESS"
-          - "DC vCenter authentication: SUCCESS"
-          - "vCenter: {{ vcenter_host }}"
-          - "Version: {{ vcenter_auth.about_info.version | default('Unknown') }}"
+          - "Ping connectivity: SUCCESS"
+          - "vCenter authentication: SUCCESS"
+          - "vCenter address: {{ vcenter_host }}"
+          - "vCenter API port: {{ vcenter_port | default('443') }}"
+
+    - name: Delete the temporary vCenter API session
+      ansible.builtin.uri:
+        url: >-
+          https://{{ vcenter_host }}:
+          {{ vcenter_port | default('443') }}/api/session
+        method: DELETE
+        headers:
+          vmware-api-session-id: "{{ vcenter_session.json }}"
+        validate_certs: "{{ validate_certs | default(false) | bool }}"
+        status_code:
+          - 200
+          - 204
+      no_log: true
