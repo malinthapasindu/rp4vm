@@ -1,21 +1,74 @@
 ---
-- name: Validate production vCenter
+- name: Validate DC vCenter connectivity
   hosts: localhost
   gather_facts: false
 
   tasks:
+    - name: Validate injected DC vCenter credential variables
+      ansible.builtin.assert:
+        that:
+          - vcenter_host is defined
+          - vcenter_host | length > 0
+          - vcenter_port is defined
+          - vcenter_username is defined
+          - vcenter_username | length > 0
+          - vcenter_password is defined
+          - vcenter_password | length > 0
+          - validate_certs is defined
+        fail_msg: >-
+          DC vCenter credentials were not injected.
+          Attach the 'DC vCenter' credential to the AAP Job Template.
+        success_msg: "DC vCenter credential variables were injected successfully."
+      no_log: true
 
-    - name: Validate vCenter connectivity
+    - name: Validate TCP connectivity to vCenter API port
+      ansible.builtin.wait_for:
+        host: "{{ vcenter_host }}"
+        port: "{{ vcenter_port | int }}"
+        state: started
+        timeout: 15
+        connect_timeout: 5
+      register: vcenter_tcp_check
+
+    - name: Gather DC vCenter product information
       community.vmware.vmware_about_info:
-        hostname: "{{ dc_vcenter_hostname }}"
-        username: "{{ dc_vcenter_username }}"
-        password: "{{ dc_vcenter_password }}"
-        validate_certs: "{{ validate_certs }}"
-      register: vcenter_info
+        hostname: "{{ vcenter_host }}"
+        port: "{{ vcenter_port | int }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs | bool }}"
+      register: vcenter_about
+      no_log: true
 
-    - name: Display vCenter details
+    - name: Validate vCenter API response
+      ansible.builtin.assert:
+        that:
+          - vcenter_about.about_info is defined
+          - vcenter_about.about_info.version is defined
+        fail_msg: >-
+          Connected to {{ vcenter_host }}:{{ vcenter_port }},
+          but vCenter API authentication or information retrieval failed.
+        success_msg: >-
+          Successfully authenticated to DC vCenter
+          {{ vcenter_host }}:{{ vcenter_port }}.
+
+    - name: Display DC vCenter connectivity result
       ansible.builtin.debug:
         msg:
-          - "vCenter version: {{ vcenter_info.about_info.version }}"
-          - "Build: {{ vcenter_info.about_info.build }}"
-          - "Product: {{ vcenter_info.about_info.full_name }}"
+          - "DC vCenter connectivity: Successful"
+          - "vCenter address: {{ vcenter_host }}"
+          - "vCenter API port: {{ vcenter_port }}"
+          - "Product: {{ vcenter_about.about_info.full_name | default('Unknown') }}"
+          - "Version: {{ vcenter_about.about_info.version | default('Unknown') }}"
+          - "Build: {{ vcenter_about.about_info.build | default('Unknown') }}"
+          - "API type: {{ vcenter_about.about_info.api_type | default('Unknown') }}"
+          - "API version: {{ vcenter_about.about_info.api_version | default('Unknown') }}"
+
+    - name: Publish vCenter validation result to AAP workflow
+      ansible.builtin.set_stats:
+        data:
+          dc_vcenter_validation: "successful"
+          dc_vcenter_host: "{{ vcenter_host }}"
+          dc_vcenter_version: "{{ vcenter_about.about_info.version | default('Unknown') }}"
+          dc_vcenter_build: "{{ vcenter_about.about_info.build | default('Unknown') }}"
+        per_host: false
