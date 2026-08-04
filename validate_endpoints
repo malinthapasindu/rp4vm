@@ -1,0 +1,26 @@
+---
+- name: Validate DC and DR RP4VM endpoints
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    dc_rp4vm_host: >-
+      {{ hostvars[groups['dc_rp4vm'][0]]['ansible_host'] }}
+
+    dr_rp4vm_host: >-
+      {{ hostvars[groups['dr_rp4vm'][0]]['ansible_host'] }}
+
+  tasks:
+    - name: Validate inventory groups
+      ansible.builtin.assert:
+        that:
+          - groups['dc_rp4vm'] | length == 1
+          - groups['dr_rp4vm'] | length == 1
+        fail_msg: >-
+          The inventory must contain one DC RP4VM host and one DR RP4VM host.
+
+    - name: Display configured endpoints
+      ansible.builtin.debug:
+        msg:
+          - "DC RP4VM endpoint: {{ dc_rp4vm_host }}"
+          - "DR RP4VM endpoint: {{ dr_rp4vm_host }}"
