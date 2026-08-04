@@ -30,16 +30,6 @@
         connect_timeout: 5
       register: vcenter_tcp_check
 
-    - name: Gather DC vCenter product information
-      community.vmware.vmware_about_info:
-        hostname: "{{ vcenter_host }}"
-        port: "{{ vcenter_port | int }}"
-        username: "{{ vcenter_username }}"
-        password: "{{ vcenter_password }}"
-        validate_certs: "{{ validate_certs | bool }}"
-      register: vcenter_about
-      no_log: true
-
     - name: Validate vCenter API response
       ansible.builtin.assert:
         that:
@@ -58,9 +48,6 @@
           - "DC vCenter connectivity: Successful"
           - "vCenter address: {{ vcenter_host }}"
           - "vCenter API port: {{ vcenter_port }}"
-          - "Product: {{ vcenter_about.about_info.full_name | default('Unknown') }}"
-          - "Version: {{ vcenter_about.about_info.version | default('Unknown') }}"
-          - "Build: {{ vcenter_about.about_info.build | default('Unknown') }}"
           - "API type: {{ vcenter_about.about_info.api_type | default('Unknown') }}"
           - "API version: {{ vcenter_about.about_info.api_version | default('Unknown') }}"
 
