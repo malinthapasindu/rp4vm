@@ -5,10 +5,10 @@
 
   vars:
     dc_rp4vm_host: >-
-      {{ hostvars[groups['DC RP4VM'][0]]['dc_rp4vm_cluster'] }}
+      {{ hostvars[groups['dc_rp4vm'][0]]['dc_rp4vm_cluster'] }}
 
     dr_rp4vm_host: >-
-      {{ hostvars[groups['DR RP4VM'][0]]['dr_rp4vm_cluster'] }}
+      {{ hostvars[groups['dr_rp4vm'][0]]['dr_rp4vm_cluster'] }}
 
   tasks:
     - name: Validate inventory groups
