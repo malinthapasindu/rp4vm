@@ -14,8 +14,8 @@
     - name: Validate inventory groups
       ansible.builtin.assert:
         that:
-          - groups['DC RP4VM'] | length == 1
-          - groups['DR RP4VM'] | length == 1
+          - groups['dc_rp4vm'] | length == 1
+          - groups['dr_rp4vm'] | length == 1
         fail_msg: >-
           The inventory must contain one DC RP4VM host and one DR RP4VM host.
 
