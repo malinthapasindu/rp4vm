@@ -15,7 +15,7 @@
           - vcenter_password | length > 0
         fail_msg: >-
           vCenter credential variables are missing.
-          Attach the DC vCenter credential to the Job Template.
+          Attach the DR vCenter credential to the Job Template.
       no_log: true
 
     - name: Test TCP Connectivity to vCenter API
@@ -26,6 +26,13 @@
         timeout: 15
         connect_timeout: 5
       register: vcenter_port_check
+
+    - name: Display connectivity result
+      ansible.builtin.debug:
+        msg: >-
+          TCP connectivity to
+          {{ vcenter_host }}:{{ vcenter_port | default('443') }}
+          is successful.
 
     - name: Authenticate to vCenter REST API
       ansible.builtin.uri:
