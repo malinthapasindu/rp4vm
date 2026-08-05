@@ -1,0 +1,61 @@
+---
+- name: Validate DC vCenter Connectivity and Authentication
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Validate vCenter Credential Variables
+      ansible.builtin.assert:
+        that:
+          - vcenter_host is defined
+          - vcenter_host | length > 0
+          - vcenter_username is defined
+          - vcenter_username | length > 0
+          - vcenter_password is defined
+          - vcenter_password | length > 0
+        fail_msg: >-
+          vCenter credential variables are missing.
+          Attach the DC vCenter credential to the Job Template.
+      no_log: true
+
+    - name: Test TCP Connectivity to vCenter API
+      ansible.builtin.wait_for:
+        host: "{{ vcenter_host }}"
+        port: "{{ vcenter_port | int }}"
+        state: started
+        timeout: 15
+        connect_timeout: 5
+      register: vcenter_port_check
+
+    - name: Authenticate to vCenter REST API
+      ansible.builtin.uri:
+        url: "https://{{ vcenter_host }}/api/session"
+        method: POST
+        user: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ validate_certs }}"
+        status_code:
+          - 200
+          - 201
+        return_content: true
+      register: vcenter_session
+      no_log: true
+
+    - name: Display Authentication Result
+      ansible.builtin.debug:
+        msg:
+          - "vCenter TCP connectivity: SUCCESS"
+          - "vCenter authentication: SUCCESS"
+
+    - name: Delete Temporary vCenter API Session
+      ansible.builtin.uri:
+        url: "https://{{ vcenter_host }}/api/session"
+        method: DELETE
+        headers:
+          vmware-api-session-id: "{{ vcenter_session.json }}"
+        validate_certs: "{{ validate_certs }}"
+        status_code:
+          - 200
+          - 204
+      no_log: true
