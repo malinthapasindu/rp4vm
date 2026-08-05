@@ -41,7 +41,7 @@
         user: "{{ vcenter_username }}"
         password: "{{ vcenter_password }}"
         force_basic_auth: true
-        validate_certs: "{{ validate_certs | default(false) | bool }}"
+        validate_certs: "{{ validate_certs }}"
         status_code:
           - 200
           - 201
@@ -62,7 +62,7 @@
         method: DELETE
         headers:
           vmware-api-session-id: "{{ vcenter_session.json }}"
-        validate_certs: "{{ validate_certs | default(false) | bool }}"
+        validate_certs: "{{ validate_certs }}"
         status_code:
           - 200
           - 204
