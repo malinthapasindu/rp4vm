@@ -44,7 +44,7 @@
         validate_certs: "{{ validate_certs | default(false) | bool }}"
         return_content: true
       register: vcenter_session
-      no_log: false
+      no_log: true
 
     - name: Display authentication result
       ansible.builtin.debug:
