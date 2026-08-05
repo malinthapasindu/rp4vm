@@ -1,0 +1,49 @@
+---
+- name: Validate DR RP4VM Connectivity and Authentication
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Validate RP4VM credential variables
+      ansible.builtin.assert:
+        that:
+          - rp4vm_host is defined
+          - rp4vm_host | trim | length > 0
+          - rp4vm_username is defined
+          - rp4vm_username | trim | length > 0
+          - rp4vm_password is defined
+          - rp4vm_password | length > 0
+        fail_msg: >-
+          RP4VM credential variables are missing.
+          Attach the RP4VM credential to the AAP Job Template.
+      no_log: true
+
+    - name: Test TCP Connectivity to RP4VM API
+      ansible.builtin.wait_for:
+        host: "{{ rp4vm_host }}"
+        port: "{{ rp4vm_port | int }}"
+        state: started
+        timeout: 15
+        connect_timeout: 5
+      register: rp4vm_port_check
+
+    - name: Validate RP4VM API Authentication
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/rp-clusters"
+        method: GET
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs }}"
+        headers:
+          Accept: "application/json"
+        return_content: true
+        status_code: 200
+      register: rp4vm_api_response
+      no_log: true
+
+    - name: Display RP4VM validation result
+      ansible.builtin.debug:
+        msg:
+          - "RP4VM TCP connectivity: SUCCESS"
+          - "RP4VM authentication: SUCCESS"
