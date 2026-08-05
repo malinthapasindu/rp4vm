@@ -42,6 +42,9 @@
         password: "{{ vcenter_password }}"
         force_basic_auth: true
         validate_certs: "{{ validate_certs | default(false) | bool }}"
+        status_code:
+          - 200
+          - 201
         return_content: true
       register: vcenter_session
       no_log: true
@@ -52,11 +55,10 @@
           - "vCenter TCP connectivity: SUCCESS"
           - "vCenter authentication: SUCCESS"
           - "vCenter: {{ vcenter_host }}"
-          - "API port: {{ vcenter_port | default('443') }}"
 
     - name: Delete temporary vCenter API session
       ansible.builtin.uri:
-        url: "https://{{ vcenter_host }}:{{ vcenter_port | default('443') }}/api/session"
+        url: "https://{{ vcenter_host }}/api/session"
         method: DELETE
         headers:
           vmware-api-session-id: "{{ vcenter_session.json }}"
