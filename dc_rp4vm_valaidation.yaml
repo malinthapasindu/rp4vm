@@ -41,7 +41,7 @@
         status_code: 200
         timeout: 30
       register: rp4vm_api_response
-      no_log: true
+      no_log: false
 
     - name: Display RP4VM validation result
       ansible.builtin.debug:
