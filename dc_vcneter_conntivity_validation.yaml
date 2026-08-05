@@ -36,7 +36,7 @@
 
     - name: Authenticate to vCenter REST API
       ansible.builtin.uri:
-        url: "https://{{ vcenter_host }}:{{ vcenter_port | default('443') | trim }}/api/session"
+        url: "https://192.168.85.62/api/session"
         method: POST
         user: "{{ vcenter_username }}"
         password: "{{ vcenter_password }}"
