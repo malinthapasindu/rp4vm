@@ -1,5 +1,5 @@
 ---
-- name: Validate RP4VM Connectivity and Authentication
+- name: Validate DC RP4VM Connectivity and Authentication
   hosts: localhost
   gather_facts: false
 
