@@ -1,5 +1,5 @@
 ---
-- name: Validate DC vCenter Connectivity and Authentication
+- name: Validate DR vCenter Connectivity and Authentication
   hosts: localhost
   gather_facts: false
 
