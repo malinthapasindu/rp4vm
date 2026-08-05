@@ -40,8 +40,8 @@
         return_content: true
         status_code: 200
       register: rp4vm_api_response
-      no_log: true
-
+      no_log: false
+      
     - name: Display RP4VM validation result
       ansible.builtin.debug:
         msg:
