@@ -29,7 +29,7 @@
 
     - name: Validate RP4VM API Authentication
       ansible.builtin.uri:
-        url: "https://{{ rp4vm_host }}/api/v1/groups"
+        url: "https://192.168.85.166/api/v1/groups"
         method: GET
         user: "{{ rp4vm_username }}"
         password: "{{ rp4vm_password }}"
