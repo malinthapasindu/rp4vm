@@ -18,20 +18,16 @@
           Attach the RP4VM credential to the AAP Job Template.
       no_log: true
 
-    - name: Build RP4VM API Endpoint
-      ansible.builtin.set_fact:
-        rp4vm_groups_url: "https://{{ rp4vm_host | trim }}:{{ rp4vm_port | default('443') | string | trim }}/fapi/rest/{{ fapi_version }}/groups"
-
     - name: Test TCP Connectivity to RP4VM API
       ansible.builtin.wait_for:
-        host: "{{ rp4vm_host | trim }}"
+        host: "{{ rp4vm_host }}"
         port: "{{ rp4vm_port | int }}"
         state: started
         timeout: 15
         connect_timeout: 5
       register: rp4vm_port_check
 
-    - name: Validate RP4VM API authentication
+    - name: Validate RP4VM API Authentication
       ansible.builtin.uri:
         url: "https://{{ rp4vm_host }}/api/v1/groups"
         method: GET
