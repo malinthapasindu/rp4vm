@@ -29,7 +29,7 @@
 
     - name: Validate RP4VM API Authentication
       ansible.builtin.uri:
-        url: "https://192.168.85.166/api/v1/groups"
+        url: "https://{{ rp4vm_host }}/api/v1/rp-clusters"
         method: GET
         user: "{{ rp4vm_username }}"
         password: "{{ rp4vm_password }}"
@@ -39,20 +39,11 @@
           Accept: "application/json"
         return_content: true
         status_code: 200
-        timeout: 30
       register: rp4vm_api_response
-      no_log: false
+      no_log: true
 
     - name: Display RP4VM validation result
       ansible.builtin.debug:
         msg:
-          - "--------------------------------------------"
-          - "RP4VM validation result"
-          - "--------------------------------------------"
-          - "RP4VM endpoint: {{ rp4vm_host | trim }}"
-          - "RP4VM API port: {{ rp4vm_port | default('443') }}"
-          - "TCP connectivity: SUCCESS"
-          - "API authentication: SUCCESS"
-          - "API HTTP status: {{ rp4vm_api_response.status }}"
-          - "FAPI version: {{ fapi_version }}"
-          - "--------------------------------------------"
+          - "RP4VM TCP connectivity: SUCCESS"
+          - "RP4VM authentication: SUCCESS"
