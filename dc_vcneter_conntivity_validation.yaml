@@ -1,5 +1,5 @@
 ---
-- name: Validate DC vCenter connectivity and authentication
+- name: Validate DC vCenter Connectivity and Authentication
   hosts: localhost
   gather_facts: false
 
@@ -54,7 +54,6 @@
         msg:
           - "vCenter TCP connectivity: SUCCESS"
           - "vCenter authentication: SUCCESS"
-          - "vCenter: {{ vcenter_host }}"
 
     - name: Delete temporary vCenter API session
       ansible.builtin.uri:
