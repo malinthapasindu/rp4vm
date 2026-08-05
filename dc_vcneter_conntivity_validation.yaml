@@ -21,7 +21,7 @@
     - name: Test TCP connectivity to vCenter API
       ansible.builtin.wait_for:
         host: "{{ vcenter_host }}"
-        port: "{{ vcenter_port | default('443') | int }}"
+        port: "{{ vcenter_port }}"
         state: started
         timeout: 15
         connect_timeout: 5
