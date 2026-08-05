@@ -47,7 +47,7 @@
           - 200
           - 201
       register: vcenter_session
-      no_log: true
+      no_log: false
 
     - name: Display authentication result
       ansible.builtin.debug:
