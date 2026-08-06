@@ -232,7 +232,7 @@
         user: "{{ rp4vm_username }}"
         password: "{{ rp4vm_password }}"
         force_basic_auth: true
-        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        validate_certs: "{{ rp4vm_validate_certs }}"
         headers:
           Accept: "application/json"
           Content-Type: "application/json"
