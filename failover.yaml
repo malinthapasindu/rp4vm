@@ -267,9 +267,7 @@
       ansible.builtin.debug:
         msg:
           - "Consistency group: {{ consistency_group_name }}"
-          - "Group ID: {{ consistency_group_id }}"
           - "DR cluster: {{ selected_cg_remote_copy.rpClusterName }}"
-          - "DR copy ID: {{ selected_cg_remote_copy.id }}"
           - "Image access scenario: TEST_COPY"
           - "Snapshot: Latest available"
           - "Network type: ISOLATED_PER_CG"
