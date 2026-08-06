@@ -248,7 +248,7 @@
           - 202
         timeout: 120
       register: test_copy_response
-      no_log: true
+      no_log: false
 
     - name: Validate Test a Copy request response
       ansible.builtin.assert:
