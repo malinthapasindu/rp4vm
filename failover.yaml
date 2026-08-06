@@ -1,4 +1,4 @@
-```yaml
+
 ---
 - name: RP4VM Failover Validation
   hosts: localhost
@@ -97,4 +97,3 @@
         msg:
           - "Validation result: Successful"
           - "Consistency group: {{ consistency_group_name }}"
-```
