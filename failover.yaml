@@ -17,156 +17,77 @@
           RP4VM credential variables are missing.
           Attach the RP4VM credential to the AAP Job Template.
       no_log: true
-  
-    - name: Validate CG Input Variables
-      ansible.builtin.assert:
-        that:
-          - consistency_group_name is defined
-          - consistency_group_name | trim | length > 0
-        fail_msg: >-
-          You must provide consistency_group_name and target_copy_name
-          when launching the AAP Job Template.
-   
-    - name: Retrieve RP4VM Consistency Groups
-      ansible.builtin.uri:
-        url: "https://{{ rp4vm_host }}/api/v1/groups"
-        method: GET
-        user: "{{ rp4vm_username }}"
-        password: "{{ rp4vm_password }}"
-        force_basic_auth: true
-        validate_certs: "{{ rp4vm_validate_certs }}"
-        headers:
-          Accept: application/json
-        return_content: true
-        status_code: 200
-        timeout: 30
-      register: rp4vm_groups_response
-      no_log: true
+      
+- name: Validate Consistency Group Input
+  ansible.builtin.assert:
+    that:
+      - consistency_group_name is defined
+      - consistency_group_name | trim | length > 0
+    fail_msg: >-
+      Consistency group name was not provided.
+      Enter the consistency_group_name variable when launching the AAP job.
+    success_msg: >-
+      Consistency group input received:
+      {{ consistency_group_name }}
 
-    - name: Normalize Consistency Group Response
-      ansible.builtin.set_fact:
-        rp4vm_groups: >-
-          {{
-            rp4vm_groups_response.json.groups
-            if (
-              rp4vm_groups_response.json is mapping
-              and 'groups' in rp4vm_groups_response.json
-            )
-            else rp4vm_groups_response.json
-          }}
-      no_log: true
+- name: Retrieve Consistency Groups from RP4VM
+  ansible.builtin.uri:
+    url: "https://{{ rp4vm_host }}/api/v1/groups"
+    method: GET
+    user: "{{ rp4vm_username }}"
+    password: "{{ rp4vm_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ rp4vm_validate_certs | bool }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: 200
+    timeout: 30
+  register: rp4vm_groups_response
+  no_log: true
 
-    - name: Find Requested Consistency Group
-      ansible.builtin.set_fact:
-        matched_consistency_groups: >-
-          {{
-            rp4vm_groups
-            | selectattr('name', 'equalto', consistency_group_name)
-            | list
-          }}
-      no_log: true
+- name: Normalize RP4VM Consistency Group Response
+  ansible.builtin.set_fact:
+    rp4vm_groups: >-
+      {{
+        rp4vm_groups_response.json.groups
+        if (
+          rp4vm_groups_response.json is mapping
+          and 'groups' in rp4vm_groups_response.json
+        )
+        else rp4vm_groups_response.json
+      }}
+  no_log: true
 
-    - name: Validate Consistency Group Selection
-      ansible.builtin.assert:
-        that:
-          - matched_consistency_groups | length == 1
-        fail_msg: >-
-          Expected exactly one consistency group named
-          '{{ consistency_group_name }}', but found
-          {{ matched_consistency_groups | length }}.
-        success_msg: >-
-          Consistency group '{{ consistency_group_name }}' was found.
+- name: Find Consistency Group Entered at Launch
+  ansible.builtin.set_fact:
+    matched_consistency_groups: >-
+      {{
+        rp4vm_groups
+        | selectattr('name', 'defined')
+        | selectattr('name', 'equalto', consistency_group_name | trim)
+        | list
+      }}
+  no_log: true
 
-    - name: Save selected consistency group
-      ansible.builtin.set_fact:
-        selected_consistency_group: "{{ matched_consistency_groups[0] }}"
-      no_log: true
+- name: Validate Consistency Group Exists
+  ansible.builtin.assert:
+    that:
+      - matched_consistency_groups | length == 1
+    fail_msg: >-
+      Consistency group '{{ consistency_group_name }}' was not found,
+      or more than one group with the same name was returned.
+      Number of matches: {{ matched_consistency_groups | length }}.
+    success_msg: >-
+      Consistency group '{{ consistency_group_name }}' was found successfully.
 
-    - name: Determine consistency group identifier
-      ansible.builtin.set_fact:
-        consistency_group_id: >-
-          {{
-            selected_consistency_group.id
-            | default(
-                selected_consistency_group.uid
-                | default(
-                    selected_consistency_group.group_id
-                    | default('')
-                  )
-              )
-          }}
-      no_log: true
+- name: Save Selected Consistency Group
+  ansible.builtin.set_fact:
+    selected_consistency_group: "{{ matched_consistency_groups[0] }}"
+  no_log: true
 
-    - name: Validate consistency group identifier
-      ansible.builtin.assert:
-        that:
-          - consistency_group_id | string | length > 0
-        fail_msg: >-
-          Consistency group '{{ consistency_group_name }}' was found,
-          but its identifier could not be extracted.
-
-    - name: Retrieve Consistency Group Details
-      ansible.builtin.uri:
-        url: "{{ rp4vm_api_base }}/groups/{{ consistency_group_id }}"
-        method: GET
-        user: "{{ rp4vm_username }}"
-        password: "{{ rp4vm_password }}"
-        force_basic_auth: true
-        validate_certs: "{{ rp4vm_validate_certs | bool }}"
-        headers:
-          Accept: application/json
-        return_content: true
-        status_code: 200
-        timeout: 30
-      register: rp4vm_group_details_response
-      no_log: true
-
-    - name: Extract Consistency group copies
-      ansible.builtin.set_fact:
-        rp4vm_group_copies: >-
-          {{
-            rp4vm_group_details_response.json.copies
-            | default([])
-          }}
-      no_log: true
-
-    - name: Find requested target copy
-      ansible.builtin.set_fact:
-        matched_target_copies: >-
-          {{
-            rp4vm_group_copies
-            | selectattr('name', 'equalto', target_copy_name)
-            | list
-          }}
-      no_log: true
-
-    - name: Validate target copy selection
-      ansible.builtin.assert:
-        that:
-          - matched_target_copies | length == 1
-        fail_msg: >-
-          Expected exactly one target copy named
-          '{{ target_copy_name }}', but found
-          {{ matched_target_copies | length }}.
-        success_msg: >-
-          Target copy '{{ target_copy_name }}' was found.
-
-    - name: Save selected target copy
-      ansible.builtin.set_fact:
-        selected_target_copy: "{{ matched_target_copies[0] }}"
-      no_log: true
-
-    - name: Determine target copy identifier
-      ansible.builtin.set_fact:
-        target_copy_id: >-
-          {{
-            selected_target_copy.id
-            | default(
-                selected_target_copy.uid
-                | default(
-                    selected_target_copy.copy_id
-                    | default('')
-                  )
-              )
-          }}
-      no_log: true
+- name: Display Consistency Group Validation Result
+  ansible.builtin.debug:
+    msg:
+      - "Validation result: Successful"
+      - "Consistency group: {{ consistency_group_name }}"
