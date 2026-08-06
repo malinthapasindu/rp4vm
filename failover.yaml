@@ -157,63 +157,72 @@
       no_log: true
 
     - name: Select production copy
-      ansible.builtin.set_fact:
-        selected_cg_production_copies: >-
-          {{
-            selected_cg_copies
-            | selectattr('copyRole', 'defined')
-            | selectattr('copyRole', 'equalto', 'PRODUCTION')
-            | list
-          }}
-      no_log: true
+  ansible.builtin.set_fact:
+    selected_cg_production_copies: >-
+      {{
+        selected_cg_copies
+        | selectattr('copyRole', 'defined')
+        | selectattr('copyRole', 'equalto', 'PRODUCTION')
+        | list
+      }}
+  no_log: true
 
-    - name: Select remote replica copy
-      ansible.builtin.set_fact:
-        selected_cg_remote_copies: >-
-          {{
-            selected_cg_copies
-            | selectattr('copyRole', 'defined')
-            | selectattr('copyRole', 'equalto', 'REMOTE_REPLICA')
-            | list
-          }}
-      no_log: true
- 
-    - name: Validate selected consistency group copy health
-      ansible.builtin.assert:
-        that:
-          - selected_cg_production_copy.enabled | default(false) | bool
-          - selected_cg_production_copy.status | default('') | upper == 'OK'
-          - >-
-            selected_cg_production_copy.transferInfo.status
-            | default('')
-            | upper == 'ACTIVE'
+- name: Select remote replica copy
+  ansible.builtin.set_fact:
+    selected_cg_remote_copies: >-
+      {{
+        selected_cg_copies
+        | selectattr('copyRole', 'defined')
+        | selectattr('copyRole', 'equalto', 'REMOTE_REPLICA')
+        | list
+      }}
+  no_log: true
 
-          - selected_cg_remote_copy.enabled | default(false) | bool
-          - selected_cg_remote_copy.status | default('') | upper == 'OK'
-          - >-
-            selected_cg_remote_copy.transferInfo.status
-            | default('')
-            | upper == 'ACTIVE'
-          - selected_cg_remote_copy.transferEnabled | default(false) | bool
+- name: Save production and remote copy objects
+  ansible.builtin.set_fact:
+    selected_cg_production_copy: >-
+      {{ selected_cg_production_copies | first | default({}) }}
+    selected_cg_remote_copy: >-
+      {{ selected_cg_remote_copies | first | default({}) }}
+  no_log: true
 
-        fail_msg: |
-          Consistency group '{{ consistency_group_name }}' is not healthy.
-          Test a Copy will not continue.
+- name: Validate selected consistency group copy health
+  ansible.builtin.assert:
+    that:
+      - selected_cg_production_copy | length > 0
+      - selected_cg_remote_copy | length > 0
 
-          Production copy:
-            Cluster: {{ selected_cg_production_copy.rpClusterName | default('UNKNOWN') }}
-            Enabled: {{ selected_cg_production_copy.enabled | default('UNKNOWN') }}
-            Status: {{ selected_cg_production_copy.status | default('UNKNOWN') }}
-            Transfer status: {{ selected_cg_production_copy.transferInfo.status | default('UNKNOWN') }}
+      - selected_cg_production_copy.enabled | default(false) | bool
+      - selected_cg_production_copy.status | default('') | upper == 'OK'
+      - selected_cg_production_copy.transferInfo.status | default('') | upper == 'ACTIVE'
 
-          Remote copy:
-            Cluster: {{ selected_cg_remote_copy.rpClusterName | default('UNKNOWN') }}
-            Enabled: {{ selected_cg_remote_copy.enabled | default('UNKNOWN') }}
-            Status: {{ selected_cg_remote_copy.status | default('UNKNOWN') }}
-            Transfer status: {{ selected_cg_remote_copy.transferInfo.status | default('UNKNOWN') }}
-            Transfer enabled: {{ selected_cg_remote_copy.transferEnabled | default('UNKNOWN') }}
+      - selected_cg_remote_copy.enabled | default(false) | bool
+      - selected_cg_remote_copy.status | default('') | upper == 'OK'
+      - selected_cg_remote_copy.transferInfo.status | default('') | upper == 'ACTIVE'
+      - selected_cg_remote_copy.transferEnabled | default(false) | bool
 
-        success_msg: >-
-          Consistency group '{{ consistency_group_name }}' is healthy.
-          The production copy and remote replica are enabled, their status is
-          OK, and replication transfer is ACTIVE.```
+    fail_msg: >-
+      Consistency group '{{ consistency_group_name }}' is not healthy.
+      Test a Copy will not continue.
+
+      Production copy:
+      Cluster: {{ selected_cg_production_copy.rpClusterName | default('UNKNOWN') }}
+      Enabled: {{ selected_cg_production_copy.enabled | default('UNKNOWN') }}
+      Status: {{ selected_cg_production_copy.status | default('UNKNOWN') }}
+      Transfer status:
+      {{ selected_cg_production_copy.transferInfo.status | default('UNKNOWN') }}
+
+      Remote copy:
+      Cluster: {{ selected_cg_remote_copy.rpClusterName | default('UNKNOWN') }}
+      Enabled: {{ selected_cg_remote_copy.enabled | default('UNKNOWN') }}
+      Status: {{ selected_cg_remote_copy.status | default('UNKNOWN') }}
+      Transfer status:
+      {{ selected_cg_remote_copy.transferInfo.status | default('UNKNOWN') }}
+      Transfer enabled:
+      {{ selected_cg_remote_copy.transferEnabled | default('UNKNOWN') }}
+
+    success_msg: >-
+      Consistency group '{{ consistency_group_name }}' is healthy.
+      Production copy '{{ selected_cg_production_copy.rpClusterName }}'
+      and remote copy '{{ selected_cg_remote_copy.rpClusterName }}'
+      are enabled, status is OK, and transfer status is ACTIVE.
