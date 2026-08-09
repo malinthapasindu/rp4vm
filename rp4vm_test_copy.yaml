@@ -1,0 +1,96 @@
+---
+- name: RP4VM Test a Copy
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+    - name: Validate variables received from validation job
+      ansible.builtin.assert:
+        that:
+          - consistency_group_name is defined
+          - consistency_group_name | length > 0
+          - consistency_group_id is defined
+          - consistency_group_id | string | length > 0
+          - remote_copy_id is defined
+          - remote_copy_id | string | length > 0
+          - remote_cluster_name is defined
+        fail_msg: >-
+          Required variables were not received from the RP4VM
+          validation workflow job.
+
+    - name: Display Test a Copy target
+      ansible.builtin.debug:
+        msg:
+          - "Consistency group: {{ consistency_group_name }}"
+          - "Group ID: {{ consistency_group_id }}"
+          - "Remote cluster: {{ remote_cluster_name }}"
+          - "Remote copy ID: {{ remote_copy_id }}"
+
+    - name: Perform Test a Copy on remote replica
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/groups/{{ consistency_group_id }}/copies/{{ remote_copy_id }}/test-copy"
+        method: POST
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          imageAccessScenario: "TEST_COPY"
+          powerOnVms: true
+          testNetworkType: "ISOLATED_PER_CG"
+        return_content: true
+        status_code:
+          - 200
+          - 201
+          - 202
+        timeout: 120
+      register: test_copy_response
+      no_log: true
+
+    - name: Validate Test a Copy response
+      ansible.builtin.assert:
+        that:
+          - test_copy_response.json is defined
+          - test_copy_response.json.id is defined
+          - test_copy_response.json.id | string | length > 0
+        fail_msg: >-
+          RP4VM did not return a transaction ID for Test a Copy.
+          HTTP status:
+          {{ test_copy_response.status | default('UNKNOWN') }}.
+        success_msg: >-
+          Test a Copy started successfully for
+          '{{ consistency_group_name }}'.
+          Transaction ID:
+          {{ test_copy_response.json.id }}.
+
+    - name: Save Test a Copy transaction ID
+      ansible.builtin.set_fact:
+        test_copy_transaction_id: "{{ test_copy_response.json.id }}"
+      no_log: true
+
+    - name: Publish Test a Copy information to workflow
+      ansible.builtin.set_stats:
+        data:
+          consistency_group_name: "{{ consistency_group_name }}"
+          consistency_group_id: "{{ consistency_group_id }}"
+          remote_copy_id: "{{ remote_copy_id }}"
+          remote_cluster_name: "{{ remote_cluster_name }}"
+          test_copy_transaction_id: "{{ test_copy_transaction_id }}"
+        per_host: false
+
+    - name: Display Test a Copy result
+      ansible.builtin.debug:
+        msg:
+          - "Test a Copy: STARTED"
+          - "Consistency group: {{ consistency_group_name }}"
+          - "Remote cluster: {{ remote_cluster_name }}"
+          - "Remote copy ID: {{ remote_copy_id }}"
+          - "Snapshot: Latest available"
+          - "Network type: ISOLATED_PER_CG"
+          - "Power on VMs: true"
+          - "Transaction ID: {{ test_copy_transaction_id }}"
