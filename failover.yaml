@@ -227,12 +227,12 @@
 
     - name: Perform Test a Copy on the remote replica
       ansible.builtin.uri:
-        url: "https://{{ rp4vm_host }}/api/v1/groups/{{ consistency_group_id }}/copies/{{ selected_cg_remote_copy.id }}/test-copy"
+        url: "https://{{ rp4vm_host }}/api/v1/group/{{ consistency_group_id }}/copies/{{ selected_cg_remote_copy.id }}/test-copy"
         method: POST
         user: "{{ rp4vm_username }}"
         password: "{{ rp4vm_password }}"
         force_basic_auth: true
-        validate_certs: "{{ rp4vm_validate_certs }}"
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
         headers:
           Accept: "application/json"
           Content-Type: "application/json"
@@ -248,7 +248,7 @@
           - 202
         timeout: 120
       register: test_copy_response
-      no_log: false
+      no_log: true
 
     - name: Validate Test a Copy request response
       ansible.builtin.assert:
@@ -267,9 +267,77 @@
       ansible.builtin.debug:
         msg:
           - "Consistency group: {{ consistency_group_name }}"
+          - "Group ID: {{ consistency_group_id }}"
           - "DR cluster: {{ selected_cg_remote_copy.rpClusterName }}"
+          - "DR copy ID: {{ selected_cg_remote_copy.id }}"
           - "Image access scenario: TEST_COPY"
           - "Snapshot: Latest available"
           - "Network type: ISOLATED_PER_CG"
           - "Power on VMs: true"
           - "Activity ID: {{ test_copy_response.json.id }}"
+
+    - name: Monitor Test a Copy transaction progress
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/transactions/{{ test_copy_response.json.id }}"
+        method: GET
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        headers:
+          Accept: "application/json"
+        return_content: true
+        status_code: 200
+        timeout: 30
+      register: test_copy_transaction
+      until:
+        - test_copy_transaction.json.progressPercentage | default(0) | int == 100
+        - test_copy_transaction.json.status | default('') | upper == 'COMPLETED'
+      retries: 60
+      delay: 10
+      no_log: true
+
+    - name: Display Test a Copy transaction result
+      ansible.builtin.debug:
+        msg:
+          - "Transaction ID: {{ test_copy_transaction.json.id }}"
+          - "Progress: {{ test_copy_transaction.json.progressPercentage }}%"
+          - "Transaction status: {{ test_copy_transaction.json.status }}"
+          - "Details: {{ test_copy_transaction.json.progressString | default('N/A') }}"
+
+    - name: Monitor recovery activity until ready for testing
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/groups/recovery-activities?copyid={{ selected_cg_remote_copy.id | urlencode }}"
+        method: GET
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        headers:
+          Accept: "application/json"
+        return_content: true
+        status_code: 200
+        timeout: 30
+      register: recovery_activities_response
+      until:
+        - recovery_activities_response.json | length > 0
+        - >-
+          (
+            recovery_activities_response.json
+            | selectattr('copyId', 'equalto', selected_cg_remote_copy.id)
+            | selectattr('activityType', 'equalto', 'TEST_COPY')
+            | selectattr('status', 'equalto', 'READY_FOR_TESTING')
+            | list
+            | length
+          ) > 0
+      retries: 60
+      delay: 10
+      no_log: true
+
+    - name: Display recovery activity result
+      ansible.builtin.debug:
+        msg:
+          - "Consistency group: {{ consistency_group_name }}"
+          - "Remote copy ID: {{ selected_cg_remote_copy.id }}"
+          - "Recovery activity status: READY_FOR_TESTING"
+          - "Test copy is ready. Failover can continue."
