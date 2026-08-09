@@ -227,7 +227,7 @@
 
     - name: Perform Test a Copy on the remote replica
       ansible.builtin.uri:
-        url: "https://{{ rp4vm_host }}/api/v1/group/{{ consistency_group_id }}/copies/{{ selected_cg_remote_copy.id }}/test-copy"
+        url: "https://{{ rp4vm_host }}/api/v1/groups/{{ consistency_group_id }}/copies/{{ selected_cg_remote_copy.id }}/test-copy"
         method: POST
         user: "{{ rp4vm_username }}"
         password: "{{ rp4vm_password }}"
