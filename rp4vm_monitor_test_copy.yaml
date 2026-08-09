@@ -1,0 +1,116 @@
+---
+- name: Monitor RP4VM Test a Copy
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+    - name: Validate monitoring variables
+      ansible.builtin.assert:
+        that:
+          - test_copy_transaction_id is defined
+          - test_copy_transaction_id | string | length > 0
+          - remote_copy_id is defined
+          - remote_copy_id | string | length > 0
+          - consistency_group_name is defined
+        fail_msg: >-
+          Test a Copy monitoring variables were not received
+          from the previous workflow job.
+
+    - name: Monitor Test a Copy transaction
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/transactions/{{ test_copy_transaction_id }}"
+        method: GET
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        headers:
+          Accept: "application/json"
+        return_content: true
+        status_code: 200
+        timeout: 30
+      register: test_copy_transaction
+      until:
+        - test_copy_transaction.json.progressPercentage
+          | default(0) | int == 100
+        - test_copy_transaction.json.status
+          | default('') | upper == 'COMPLETED'
+      retries: 60
+      delay: 10
+      no_log: true
+
+    - name: Display Test a Copy transaction result
+      ansible.builtin.debug:
+        msg:
+          - "Transaction ID: {{ test_copy_transaction.json.id }}"
+          - "Progress: {{ test_copy_transaction.json.progressPercentage }}%"
+          - "Transaction status: {{ test_copy_transaction.json.status }}"
+          - >-
+            Details:
+            {{ test_copy_transaction.json.progressString
+            | default('N/A') }}
+
+    - name: Monitor recovery activity until ready for testing
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/groups/recovery-activities?copyid={{ remote_copy_id | urlencode }}"
+        method: GET
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        headers:
+          Accept: "application/json"
+        return_content: true
+        status_code: 200
+        timeout: 30
+      register: recovery_activities_response
+      until:
+        - recovery_activities_response.json | length > 0
+        - >-
+          (
+            recovery_activities_response.json
+            | selectattr('copyId', 'equalto', remote_copy_id)
+            | selectattr('activityType', 'equalto', 'TEST_COPY')
+            | selectattr('status', 'equalto', 'READY_FOR_TESTING')
+            | list
+            | length
+          ) > 0
+      retries: 60
+      delay: 10
+      no_log: true
+
+    - name: Save ready recovery activity
+      ansible.builtin.set_fact:
+        ready_recovery_activity: >-
+          {{
+            recovery_activities_response.json
+            | selectattr('copyId', 'equalto', remote_copy_id)
+            | selectattr('activityType', 'equalto', 'TEST_COPY')
+            | selectattr('status', 'equalto', 'READY_FOR_TESTING')
+            | list
+            | first
+            | default({})
+          }}
+      no_log: true
+
+    - name: Display recovery activity result
+      ansible.builtin.debug:
+        msg:
+          - "Consistency group: {{ consistency_group_name }}"
+          - "Remote copy ID: {{ remote_copy_id }}"
+          - "Transaction progress: 100%"
+          - "Transaction status: COMPLETED"
+          - "Recovery activity status: READY_FOR_TESTING"
+          - "Test copy is ready. Failover can continue."
+
+    - name: Publish monitoring result to workflow
+      ansible.builtin.set_stats:
+        data:
+          consistency_group_name: "{{ consistency_group_name }}"
+          consistency_group_id: "{{ consistency_group_id }}"
+          remote_copy_id: "{{ remote_copy_id }}"
+          remote_cluster_name: "{{ remote_cluster_name }}"
+          test_copy_transaction_id: "{{ test_copy_transaction_id }}"
+          test_copy_status: "READY_FOR_TESTING"
+        per_host: false
