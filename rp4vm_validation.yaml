@@ -1,0 +1,230 @@
+---
+- name: RP4VM consistency group validation
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+    - name: Validate RP4VM credential variables
+      ansible.builtin.assert:
+        that:
+          - rp4vm_host is defined
+          - rp4vm_host | trim | length > 0
+          - rp4vm_username is defined
+          - rp4vm_username | trim | length > 0
+          - rp4vm_password is defined
+          - rp4vm_password | length > 0
+        fail_msg: >-
+          RP4VM credential variables are missing.
+          Attach the RP4VM credential to the AAP Job Template.
+      no_log: true
+
+    - name: Validate consistency group input
+      ansible.builtin.assert:
+        that:
+          - consistency_group_name is defined
+          - consistency_group_name | trim | length > 0
+        fail_msg: >-
+          The consistency group name was not provided.
+          Select the consistency group when launching the workflow.
+        success_msg: >-
+          Consistency group input received:
+          {{ consistency_group_name }}
+
+    - name: Retrieve consistency groups from RP4VM
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/groups"
+        method: GET
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        headers:
+          Accept: "application/json"
+        return_content: true
+        status_code: 200
+        timeout: 30
+      register: rp4vm_groups_response
+      no_log: true
+
+    - name: Normalize RP4VM consistency group response
+      ansible.builtin.set_fact:
+        rp4vm_groups: >-
+          {{
+            rp4vm_groups_response.json.groups
+            if (
+              rp4vm_groups_response.json is mapping
+              and 'groups' in rp4vm_groups_response.json
+            )
+            else rp4vm_groups_response.json
+          }}
+      no_log: true
+
+    - name: Find consistency group entered at launch
+      ansible.builtin.set_fact:
+        matched_consistency_groups: >-
+          {{
+            rp4vm_groups
+            | selectattr('name', 'defined')
+            | selectattr(
+                'name',
+                'equalto',
+                consistency_group_name | trim
+              )
+            | list
+          }}
+      no_log: true
+
+    - name: Validate consistency group exists
+      ansible.builtin.assert:
+        that:
+          - matched_consistency_groups | length == 1
+        fail_msg: >-
+          Consistency group '{{ consistency_group_name }}' was not found,
+          or more than one consistency group with the same name was returned.
+          Number of matches: {{ matched_consistency_groups | length }}.
+        success_msg: >-
+          Consistency group '{{ consistency_group_name }}'
+          was found successfully.
+
+    - name: Save selected consistency group
+      ansible.builtin.set_fact:
+        selected_consistency_group: "{{ matched_consistency_groups[0] }}"
+      no_log: true
+
+    - name: Validate selected consistency group ID
+      ansible.builtin.assert:
+        that:
+          - selected_consistency_group.id is defined
+          - selected_consistency_group.id | string | length > 0
+        fail_msg: >-
+          Selected consistency group does not contain a valid ID.
+
+    - name: Save selected consistency group ID
+      ansible.builtin.set_fact:
+        consistency_group_id: "{{ selected_consistency_group.id | string }}"
+      no_log: true
+
+    - name: Retrieve RP4VM copies
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/copies"
+        method: GET
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        headers:
+          Accept: "application/json"
+        return_content: true
+        status_code: 200
+        timeout: 30
+      register: rp4vm_copies_response
+      no_log: true
+
+    - name: Normalize RP4VM copies response
+      ansible.builtin.set_fact:
+        rp4vm_copies: >-
+          {{
+            rp4vm_copies_response.json.copies
+            if (
+              rp4vm_copies_response.json is mapping
+              and 'copies' in rp4vm_copies_response.json
+            )
+            else rp4vm_copies_response.json
+          }}
+      no_log: true
+
+    - name: Select copies belonging to selected consistency group
+      ansible.builtin.set_fact:
+        selected_cg_copies: >-
+          {{
+            rp4vm_copies
+            | selectattr('groupId', 'defined')
+            | selectattr(
+                'groupId',
+                'equalto',
+                consistency_group_id
+              )
+            | list
+          }}
+      no_log: true
+
+    - name: Select production copy
+      ansible.builtin.set_fact:
+        selected_cg_production_copy: >-
+          {{
+            selected_cg_copies
+            | selectattr('copyRole', 'defined')
+            | selectattr('copyRole', 'equalto', 'PRODUCTION')
+            | list
+            | first
+            | default({})
+          }}
+      no_log: true
+
+    - name: Select remote replica copy
+      ansible.builtin.set_fact:
+        selected_cg_remote_copy: >-
+          {{
+            selected_cg_copies
+            | selectattr('copyRole', 'defined')
+            | selectattr('copyRole', 'equalto', 'REMOTE_REPLICA')
+            | list
+            | first
+            | default({})
+          }}
+      no_log: true
+
+    - name: Validate selected consistency group copy health
+      ansible.builtin.assert:
+        that:
+          - selected_cg_production_copy | length > 0
+          - selected_cg_remote_copy | length > 0
+
+          - selected_cg_production_copy.enabled | default(false) | bool
+          - selected_cg_production_copy.status | default('') | upper == 'OK'
+          - selected_cg_production_copy.transferInfo.status
+            | default('') | upper == 'ACTIVE'
+
+          - selected_cg_remote_copy.enabled | default(false) | bool
+          - selected_cg_remote_copy.status | default('') | upper == 'OK'
+          - selected_cg_remote_copy.transferInfo.status
+            | default('') | upper == 'ACTIVE'
+          - selected_cg_remote_copy.transferEnabled
+            | default(false) | bool
+
+        fail_msg: >-
+          Consistency group '{{ consistency_group_name }}'
+          is not healthy. Failover workflow will stop.
+
+        success_msg: >-
+          Consistency group '{{ consistency_group_name }}' is healthy.
+          Production copy '{{ selected_cg_production_copy.rpClusterName }}'
+          and remote copy '{{ selected_cg_remote_copy.rpClusterName }}'
+          are ready.
+
+    - name: Publish validated RP4VM information to workflow
+      ansible.builtin.set_stats:
+        data:
+          consistency_group_name: "{{ consistency_group_name }}"
+          consistency_group_id: "{{ consistency_group_id }}"
+
+          production_copy_id: "{{ selected_cg_production_copy.id }}"
+          production_cluster_id: "{{ selected_cg_production_copy.rpClusterId }}"
+          production_cluster_name: "{{ selected_cg_production_copy.rpClusterName }}"
+
+          remote_copy_id: "{{ selected_cg_remote_copy.id }}"
+          remote_cluster_id: "{{ selected_cg_remote_copy.rpClusterId }}"
+          remote_cluster_name: "{{ selected_cg_remote_copy.rpClusterName }}"
+        per_host: false
+
+    - name: Display validation result
+      ansible.builtin.debug:
+        msg:
+          - "Validation result: SUCCESSFUL"
+          - "Consistency group: {{ consistency_group_name }}"
+          - "Consistency group ID: {{ consistency_group_id }}"
+          - "Production cluster: {{ selected_cg_production_copy.rpClusterName }}"
+          - "Production copy ID: {{ selected_cg_production_copy.id }}"
+          - "Remote cluster: {{ selected_cg_remote_copy.rpClusterName }}"
+          - "Remote copy ID: {{ selected_cg_remote_copy.id }}"
