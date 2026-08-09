@@ -341,3 +341,49 @@
           - "Remote copy ID: {{ selected_cg_remote_copy.id }}"
           - "Recovery activity status: READY_FOR_TESTING"
           - "Test copy is ready. Failover can continue."
+
+    - name: Perform failover on the remote replica
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/groups/{{ consistency_group_id }}/copies/{{ selected_cg_remote_copy.id }}/failover"
+        method: POST
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          applyFailoverNetworks: true
+        return_content: true
+        status_code:
+          - 200
+          - 201
+          - 202
+        timeout: 120
+      register: failover_response
+      no_log: true
+
+    - name: Validate failover request response
+      ansible.builtin.assert:
+        that:
+          - failover_response.json.id is defined
+          - failover_response.json.id | string | length > 0
+        fail_msg: >-
+          RP4VM did not return a transaction ID for the failover request.
+          HTTP status: {{ failover_response.status | default('UNKNOWN') }}.
+        success_msg: >-
+          Failover was started successfully for consistency group
+          '{{ consistency_group_name }}'.
+          Transaction ID: {{ failover_response.json.id }}.
+
+    - name: Display failover request details
+      ansible.builtin.debug:
+        msg:
+          - "Consistency group: {{ consistency_group_name }}"
+          - "Group ID: {{ consistency_group_id }}"
+          - "Remote cluster: {{ selected_cg_remote_copy.rpClusterName }}"
+          - "Remote copy ID: {{ selected_cg_remote_copy.id }}"
+          - "Apply failover networks: true"
+          - "Failover transaction ID: {{ failover_response.json.id }}"
