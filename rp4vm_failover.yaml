@@ -1,0 +1,85 @@
+---
+- name: RP4VM Failover
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+    - name: Validate failover variables
+      ansible.builtin.assert:
+        that:
+          - consistency_group_name is defined
+          - consistency_group_name | length > 0
+          - consistency_group_id is defined
+          - consistency_group_id | string | length > 0
+          - remote_copy_id is defined
+          - remote_copy_id | string | length > 0
+          - test_copy_status is defined
+          - test_copy_status == 'READY_FOR_TESTING'
+        fail_msg: >-
+          Required failover information was not received from the
+          previous workflow job, or Test a Copy is not READY_FOR_TESTING.
+
+    - name: Display failover target
+      ansible.builtin.debug:
+        msg:
+          - "Consistency group: {{ consistency_group_name }}"
+          - "Group ID: {{ consistency_group_id }}"
+          - "Remote cluster: {{ remote_cluster_name }}"
+          - "Remote copy ID: {{ remote_copy_id }}"
+          - "Test copy status: {{ test_copy_status }}"
+
+    - name: Perform failover on remote replica
+      ansible.builtin.uri:
+        url: "https://{{ rp4vm_host }}/api/v1/groups/{{ consistency_group_id }}/copies/{{ remote_copy_id }}/failover"
+        method: POST
+        user: "{{ rp4vm_username }}"
+        password: "{{ rp4vm_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ rp4vm_validate_certs | default(false) | bool }}"
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          applyFailoverNetworks: true
+        return_content: true
+        status_code:
+          - 200
+          - 201
+          - 202
+        timeout: 120
+      register: failover_response
+      no_log: true
+
+    - name: Validate failover response
+      ansible.builtin.assert:
+        that:
+          - failover_response.json is defined
+          - failover_response.json.id is defined
+          - failover_response.json.id | string | length > 0
+        fail_msg: >-
+          RP4VM did not return a transaction ID for the failover request.
+          HTTP status:
+          {{ failover_response.status | default('UNKNOWN') }}.
+        success_msg: >-
+          Failover started successfully for consistency group
+          '{{ consistency_group_name }}'.
+          Transaction ID:
+          {{ failover_response.json.id }}.
+
+    - name: Save failover transaction ID
+      ansible.builtin.set_fact:
+        failover_transaction_id: "{{ failover_response.json.id }}"
+      no_log: true
+
+    - name: Display failover request details
+      ansible.builtin.debug:
+        msg:
+          - "Failover request: SUCCESSFULLY SUBMITTED"
+          - "Consistency group: {{ consistency_group_name }}"
+          - "Group ID: {{ consistency_group_id }}"
+          - "Remote cluster: {{ remote_cluster_name }}"
+          - "Remote copy ID: {{ remote_copy_id }}"
+          - "Apply failover networks: true"
+          - "Failover transaction ID: {{ failover_transaction_id }}"
