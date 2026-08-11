@@ -60,4 +60,17 @@
           - 204
       no_log: true
 
-
+    - name: Send Email
+      community.general.mail:
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port | int }}"
+        secure: "{{ smtp_secure | default('never') }}"
+        username: "{{ smtp_username | default(omit) }}"
+        password: "{{ smtp_password | default(omit) }}"
+        from: "{{ email_sender }}"
+        to: "{{ email_recipient }}"
+        subject: "DC vCenter Connectivity and Authentication Validation"
+        body: |
+          vCenter TCP connectivity: SUCCESS
+          vCenter authentication: SUCCESS
+      no_log: "{{ smtp_password is defined }}"
