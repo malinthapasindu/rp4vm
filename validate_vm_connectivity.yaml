@@ -1,0 +1,16 @@
+---
+- name: Validate VM connectivity
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+    - name: Check recovered Windows VM network connectivity
+      ansible.builtin.command:
+        cmd: "ping -c 2 {{ hostvars[item].ansible_host }}"
+      loop: "{{ groups['win_hosts'] }}"
+      register: ping_results
+      changed_when: false
+      retries: 30
+      delay: 10
+      until: ping_results.rc == 0
