@@ -5,32 +5,19 @@
 
   tasks:
 
-    - name: Poll until Windows VM is reachable through WinRM
-      ansible.builtin.wait_for_connection:
-        timeout: 600
-        sleep: 10
-        connect_timeout: 5
-
-    - name: Test Windows connectivity
+    - name: Monitor Windows VM until WinRM is ready
       ansible.windows.win_ping:
       register: windows_ping_result
-
-    - name: Validate Windows ping response
-      ansible.builtin.assert:
-        that:
-          - windows_ping_result.ping is defined
-          - windows_ping_result.ping == "pong"
-        fail_msg: >-
-          Windows connectivity validation failed for
-          {{ inventory_hostname }} ({{ ansible_host }}).
-        success_msg: >-
-          Windows connectivity validation successful for
-          {{ inventory_hostname }} ({{ ansible_host }}).
+      until:
+        - windows_ping_result.ping is defined
+        - windows_ping_result.ping == 'pong'
+      retries: 60
+      delay: 10
 
     - name: Display Windows connectivity result
       ansible.builtin.debug:
         msg:
           - "VM: {{ inventory_hostname }}"
           - "IP: {{ ansible_host }}"
-          - "WinRM connectivity: SUCCESSFUL"
-          - "Win Ping response: {{ windows_ping_result.ping }}"
+          - "Windows connectivity: SUCCESSFUL"
+          - "WinRM response: {{ windows_ping_result.ping }}"
