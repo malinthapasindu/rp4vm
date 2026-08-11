@@ -5,6 +5,12 @@
 
   tasks:
 
+    - name: Wait for Windows boot and WinRM connectivity
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+        sleep: 10
+        connect_timeout: 5
+
     - name: Validate Windows management connectivity
       ansible.windows.win_ping:
       register: windows_ping_result
