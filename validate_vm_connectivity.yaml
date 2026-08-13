@@ -1,6 +1,6 @@
 ---
 - name: Validate recovered Windows VMs
-  hosts: DESKTOP-E02K5AA
+  hosts: win_hosts
   gather_facts: false
 
   tasks:
