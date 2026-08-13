@@ -1,18 +1,19 @@
 ---
 - name: Validate recovered Windows VMs
-  hosts: win_hosts
+  hosts: dr_windows
   gather_facts: false
 
   tasks:
 
-    - name: Monitor Windows VM until WinRM is ready
+    - name: Wait until Windows WinRM is available
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+        sleep: 10
+        connect_timeout: 5
+
+    - name: Validate Windows management connectivity
       ansible.windows.win_ping:
       register: windows_ping_result
-      until:
-        - windows_ping_result.ping is defined
-        - windows_ping_result.ping == 'pong'
-      retries: 60
-      delay: 10
 
     - name: Display Windows connectivity result
       ansible.builtin.debug:
