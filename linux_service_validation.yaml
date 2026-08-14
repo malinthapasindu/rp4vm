@@ -1,0 +1,25 @@
+---
+- name: Validate firewall service on Linux servers
+  hosts: linux_servers
+  gather_facts: false
+  become: true
+
+  tasks:
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Validate firewalld service status
+      ansible.builtin.assert:
+        that:
+          - "'firewalld.service' in ansible_facts.services"
+          - ansible_facts.services['firewalld.service'].state == 'running'
+          - ansible_facts.services['firewalld.service'].status == 'enabled'
+        fail_msg: >-
+          Firewalld validation failed on {{ inventory_hostname }}.
+          State:
+          {{ ansible_facts.services['firewalld.service'].state | default('UNKNOWN') }}
+          Enabled:
+          {{ ansible_facts.services['firewalld.service'].status | default('UNKNOWN') }}
+        success_msg: >-
+          Firewalld is running and enabled on {{ inventory_hostname }}.
