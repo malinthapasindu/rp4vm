@@ -1,6 +1,6 @@
 ---
 - name: Validate firewall service on Linux servers
-  hosts: linux_servers
+  hosts: linux_hosts
   gather_facts: false
   become: true
 
