@@ -1,0 +1,32 @@
+---
+- name: Stop validated services on Linux servers
+  hosts: linux_hosts
+  gather_facts: false
+  become: true
+
+  tasks:
+
+    - name: Validate service list received from previous workflow job
+      ansible.builtin.assert:
+        that:
+          - services_to_stop is defined
+          - services_to_stop | length > 0
+        fail_msg: >-
+          No service list was received from the previous workflow job.
+        success_msg: >-
+          Received service list successfully:
+          {{ services_to_stop }}
+
+    - name: Stop services received from previous workflow job
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: stopped
+      loop: "{{ services_to_stop }}"
+      register: service_stop_results
+
+    - name: Display service stop result
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "Services requested to stop: {{ services_to_stop }}"
+          - "Service stop operation completed successfully."
