@@ -1,5 +1,5 @@
 ---
-- name: Validate firewall service on Linux servers
+- name: Validate firewall and NTP services on Linux servers
   hosts: linux_hosts
   gather_facts: false
   become: true
@@ -23,3 +23,26 @@
           {{ ansible_facts.services['firewalld.service'].status | default('UNKNOWN') }}
         success_msg: >-
           Firewalld is running and enabled on {{ inventory_hostname }}.
+
+    - name: Validate chronyd service status
+      ansible.builtin.assert:
+        that:
+          - "'chronyd.service' in ansible_facts.services"
+          - ansible_facts.services['chronyd.service'].state == 'running'
+          - ansible_facts.services['chronyd.service'].status == 'enabled'
+        fail_msg: >-
+          Chronyd validation failed on {{ inventory_hostname }}.
+          State:
+          {{ ansible_facts.services['chronyd.service'].state | default('UNKNOWN') }}
+          Enabled:
+          {{ ansible_facts.services['chronyd.service'].status | default('UNKNOWN') }}
+        success_msg: >-
+          Chronyd is running and enabled on {{ inventory_hostname }}.
+
+    - name: Pass validated service names to workflow
+      ansible.builtin.set_stats:
+        data:
+          services_to_stop:
+            - firewalld.service
+            - chronyd.service
+        per_host: false
