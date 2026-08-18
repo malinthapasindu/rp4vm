@@ -1,0 +1,25 @@
+---
+- name: Validate Linux servers are reachable
+  hosts: linux_hosts
+  gather_facts: false
+  become: false
+
+  tasks:
+
+    - name: Wait for Linux SSH connectivity
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+        sleep: 10
+        connect_timeout: 5
+
+    - name: Validate Linux host connectivity
+      ansible.builtin.ping:
+      register: linux_ping_result
+
+    - name: Display Linux connectivity result
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "IP: {{ ansible_host }}"
+          - "Linux connectivity: SUCCESSFUL"
+          - "Ansible ping response: {{ linux_ping_result.ping }}"
