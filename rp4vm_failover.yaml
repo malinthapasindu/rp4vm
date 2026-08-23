@@ -80,7 +80,7 @@
 
     - name: Capture failover end time
       ansible.builtin.set_fact:
-        failover_end_time: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+        service_stop_time: "{{ lookup('pipe', 'TZ=Asia/Colombo date +%Y-%m-%dT%H:%M:%S%z') }}"
 
     - name: Publish failover audit timestamps
       ansible.builtin.set_stats:
