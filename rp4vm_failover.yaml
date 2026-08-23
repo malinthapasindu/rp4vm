@@ -28,6 +28,11 @@
           - "Remote cluster: {{ remote_cluster_name }}"
           - "Remote copy ID: {{ remote_copy_id }}"
           - "Test copy status: {{ test_copy_status }}"
+          
+    - name: Capture failover start time
+      ansible.builtin.set_fact:
+        failover_start_time: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+
 
     - name: Perform failover on remote replica
       ansible.builtin.uri:
@@ -72,6 +77,17 @@
       ansible.builtin.set_fact:
         failover_transaction_id: "{{ failover_response.json.id }}"
       no_log: true
+
+    - name: Capture failover end time
+      ansible.builtin.set_fact:
+        failover_end_time: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+
+    - name: Publish failover audit timestamps
+      ansible.builtin.set_stats:
+        data:
+          failover_start_time: "{{ failover_start_time }}"
+          failover_end_time: "{{ failover_end_time }}"
+        per_host: false
 
     - name: Display failover request details
       ansible.builtin.debug:
