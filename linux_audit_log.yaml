@@ -40,7 +40,7 @@
           ------------------------------------------------------------
 
           Failover Started        : {{ failover_start_time }}
-          Failover Completed      : {{ failover_complete_time }}
+          Failover Completed      : {{ failover_end_time }}
 
           ------------------------------------------------------------
           SERVICE START INFORMATION
