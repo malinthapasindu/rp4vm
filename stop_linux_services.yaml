@@ -34,5 +34,5 @@
     - name: Capture service stopped time
       ansible.builtin.set_stats:
         data:
-          service_stop_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          service_stop_time: "{{ lookup('pipe', 'TZ=Asia/Colombo date +%Y-%m-%dT%H:%M:%S%z') }}"
         per_host: false
