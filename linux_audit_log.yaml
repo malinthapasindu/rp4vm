@@ -18,9 +18,9 @@
       community.general.mail:
         host: "{{ smtp_host }}"
         port: "{{ smtp_port | default(25) }}"
-        from: "{{ mail_from }}"
+        from: "{{ email_sender }}"
         to:
-          - "{{ mail_to }}"
+          - "{{ email_recipient }}"
         subject: "DR Failover Audit Report - {{ consistency_group_name }}"
         body: |
           ============================================================
@@ -33,7 +33,6 @@
           SERVICE STOP INFORMATION
           ------------------------------------------------------------
 
-          Service Stop Started    : {{ service_stop_start_time }}
           Service Stopped         : {{ service_stop_time }}
 
           ------------------------------------------------------------
@@ -47,7 +46,6 @@
           SERVICE START INFORMATION
           ------------------------------------------------------------
 
-          Service Start           : {{ service_start_time }}
           Service UP              : {{ service_up_time }}
 
           ------------------------------------------------------------
