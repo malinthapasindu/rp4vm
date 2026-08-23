@@ -11,7 +11,7 @@
           - "Consistency Group : {{ consistency_group_name }}"
           - "Service Stopped   : {{ service_stop_time }}"
           - "Failover Started  : {{ failover_start_time }}"
-          - "Failover Completed: {{ failover_complete_time }}"
+          - "Failover Completed: {{ failover_end_time }}"
           - "Service Start     : {{ service_start_time }}"
           - "Service UP        : {{ service_up_time }}"
 
