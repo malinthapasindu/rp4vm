@@ -17,7 +17,10 @@
     - name: Send DR audit report by email
       community.general.mail:
         host: "{{ smtp_host }}"
-        port: "{{ smtp_port | default(25) }}"
+        port: "{{ smtp_port | int }}"
+        secure: "{{ smtp_secure | default('never') }}"
+        username: "{{ smtp_username | default(omit) }}"
+        password: "{{ smtp_password | default(omit) }}"
         from: "{{ email_sender }}"
         to:
           - "{{ email_recipient }}"
