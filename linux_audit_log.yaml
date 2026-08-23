@@ -9,7 +9,6 @@
       ansible.builtin.debug:
         msg:
           - "Consistency Group : {{ consistency_group_name }}"
-          - "Service Stop Start: {{ service_stop_start_time }}"
           - "Service Stopped   : {{ service_stop_time }}"
           - "Failover Started  : {{ failover_start_time }}"
           - "Failover Completed: {{ failover_complete_time }}"
