@@ -5,7 +5,7 @@
 
   tasks:
 
-    - name: Validate variables received from validation job
+    - name: Validate Variables Received from Validation Job
       ansible.builtin.assert:
         that:
           - consistency_group_name is defined
@@ -19,7 +19,7 @@
           Required variables were not received from the RP4VM
           validation workflow job.
 
-    - name: Display Test a Copy target
+    - name: Display Test a Copy Target
       ansible.builtin.debug:
         msg:
           - "Consistency group: {{ consistency_group_name }}"
@@ -27,7 +27,7 @@
           - "Remote cluster: {{ remote_cluster_name }}"
           - "Remote copy ID: {{ remote_copy_id }}"
 
-    - name: Perform Test a Copy on remote replica
+    - name: Perform Test a Copy on Remote Replica
       ansible.builtin.uri:
         url: "https://{{ rp4vm_host }}/api/v1/groups/{{ consistency_group_id }}/copies/{{ remote_copy_id }}/test-copy"
         method: POST
@@ -52,7 +52,7 @@
       register: test_copy_response
       no_log: true
 
-    - name: Validate Test a Copy response
+    - name: Validate Test a Copy Response
       ansible.builtin.assert:
         that:
           - test_copy_response.json is defined
@@ -68,12 +68,12 @@
           Transaction ID:
           {{ test_copy_response.json.id }}.
 
-    - name: Save Test a Copy transaction ID
+    - name: Save Test a Copy Transaction ID
       ansible.builtin.set_fact:
         test_copy_transaction_id: "{{ test_copy_response.json.id }}"
       no_log: true
 
-    - name: Publish Test a Copy information to workflow
+    - name: Publish Test a Copy Information to Workflow
       ansible.builtin.set_stats:
         data:
           consistency_group_name: "{{ consistency_group_name }}"
