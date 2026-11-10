@@ -4,6 +4,7 @@
   gather_facts: false
 
   tasks:
+
     - name: Validate RP4VM credential variables
       ansible.builtin.assert:
         that:
@@ -18,6 +19,7 @@
           Attach the RP4VM credential to the AAP Job Template.
       no_log: true
 
+
     - name: Test TCP Connectivity to RP4VM API
       ansible.builtin.wait_for:
         host: "{{ rp4vm_host }}"
@@ -26,6 +28,8 @@
         timeout: 15
         connect_timeout: 5
       register: rp4vm_port_check
+      failed_when: false
+
 
     - name: Validate RP4VM API Authentication
       ansible.builtin.uri:
@@ -34,16 +38,68 @@
         user: "{{ rp4vm_username }}"
         password: "{{ rp4vm_password }}"
         force_basic_auth: true
-        validate_certs: "{{ rp4vm_validate_certs }}"
+        validate_certs: "{{ rp4vm_validate_certs | bool }}"
         headers:
           Accept: "application/json"
         return_content: true
-        status_code: 200
+        status_code:
+          - 200
+          - 401
+          - 403
       register: rp4vm_api_response
+      failed_when: false
       no_log: true
+      when: not (rp4vm_port_check.failed | default(false))
+
 
     - name: Display RP4VM validation result
       ansible.builtin.debug:
         msg:
-          - "RP4VM TCP connectivity: SUCCESS"
-          - "RP4VM authentication: SUCCESS"
+          - >-
+            RP4VM TCP connectivity:
+            {{
+              'SUCCESS'
+              if not (rp4vm_port_check.failed | default(false))
+              else 'FAILED'
+            }}
+          - >-
+            RP4VM authentication:
+            {{
+              'SUCCESS'
+              if (
+                not (rp4vm_port_check.failed | default(false))
+                and
+                (rp4vm_api_response.status | default(0)) == 200
+              )
+              else
+              (
+                'NOT TESTED - TCP connectivity failed'
+                if (rp4vm_port_check.failed | default(false))
+                else
+                'FAILED - HTTP Status ' ~
+                (rp4vm_api_response.status | default('UNKNOWN') | string)
+              )
+            }}
+
+
+    - name: Fail validation if RP4VM TCP connectivity failed
+      ansible.builtin.fail:
+        msg: >-
+          RP4VM validation failed.
+          Unable to establish TCP connectivity to
+          {{ rp4vm_host }}:{{ rp4vm_port }}.
+          Verify routing, firewall rules, RP4VM service availability,
+          and the configured hostname/IP address.
+      when: rp4vm_port_check.failed | default(false)
+
+
+    - name: Fail validation if RP4VM authentication failed
+      ansible.builtin.fail:
+        msg: >-
+          RP4VM TCP connectivity is successful, but API authentication failed.
+          HTTP Status: {{ rp4vm_api_response.status | default('UNKNOWN') }}.
+          Verify the RP4VM username, password, account status,
+          permissions, and authentication configuration.
+      when:
+        - not (rp4vm_port_check.failed | default(false))
+        - (rp4vm_api_response.status | default(0)) != 200
