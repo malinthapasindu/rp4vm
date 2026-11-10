@@ -6,7 +6,7 @@
 
   tasks:
 
-    - name: Gather service facts
+    - name: Gather Service Facts
       ansible.builtin.service_facts:
 
     - name: Validate firewalld service status
@@ -24,7 +24,7 @@
         success_msg: >-
           Firewalld is running and enabled on {{ inventory_hostname }}.
 
-    - name: Validate chronyd service status
+    - name: Validate Chronyd Service Status
       ansible.builtin.assert:
         that:
           - "'chronyd.service' in ansible_facts.services"
@@ -39,7 +39,7 @@
         success_msg: >-
           Chronyd is running and enabled on {{ inventory_hostname }}.
 
-    - name: Pass validated service names to workflow
+    - name: Pass Validated Service Names to Workflow
       ansible.builtin.set_stats:
         data:
           services_to_stop:
