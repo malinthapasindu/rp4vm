@@ -60,7 +60,7 @@
           }}
       no_log: true
 
-    - name: Find Consistency Group Rntered at Launch
+    - name: Find Consistency Group Entered at Launch
       ansible.builtin.set_fact:
         matched_consistency_groups: >-
           {{
