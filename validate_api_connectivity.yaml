@@ -1,5 +1,5 @@
 ---
-- name: Validate RP4VM API connectivity
+- name: Validate RP4VM API Connectivity
   hosts: localhost
   gather_facts: false
 
@@ -10,7 +10,7 @@
     validate_certs: false
 
   tasks:
-    - name: Validate required RP4VM variables
+    - name: Validate Required RP4VM Variables
       ansible.builtin.assert:
         that:
           - rp4vm_host | length > 0
@@ -18,7 +18,7 @@
           - rp4vm_password | length > 0
         fail_msg: "The RP4VM credential was not injected into the job."
 
-    - name: Test RP4VM API endpoint
+    - name: Test RP4VM API Endpoint
       ansible.builtin.uri:
         url: "https://{{ rp4vm_host }}/api/v1"
         method: GET
@@ -35,7 +35,7 @@
       register: rp4vm_api_test
       no_log: false
 
-    - name: Show API validation result
+    - name: Show API Validation Result
       ansible.builtin.debug:
         msg:
           - "Status: {{ rp4vm_api_test.status }}"
