@@ -5,7 +5,7 @@
 
   tasks:
 
-    - name: Validate failover variables
+    - name: Validate Failover Variables
       ansible.builtin.assert:
         that:
           - consistency_group_name is defined
@@ -20,7 +20,7 @@
           Required failover information was not received from the
           previous workflow job, or Test a Copy is not READY_FOR_TESTING.
 
-    - name: Display failover target
+    - name: Display Failover Target
       ansible.builtin.debug:
         msg:
           - "Consistency group: {{ consistency_group_name }}"
@@ -29,12 +29,12 @@
           - "Remote copy ID: {{ remote_copy_id }}"
           - "Test copy status: {{ test_copy_status }}"
           
-    - name: Capture failover start time
+    - name: Capture failover Start Time
       ansible.builtin.set_fact:
         failover_start_time: "{{ lookup('pipe', 'TZ=Asia/Colombo date +%Y-%m-%dT%H:%M:%S%z') }}"
 
 
-    - name: Perform failover on remote replica
+    - name: Perform Failover on Remote Replica
       ansible.builtin.uri:
         url: "https://{{ rp4vm_host }}/api/v1/groups/{{ consistency_group_id }}/copies/{{ remote_copy_id }}/failover"
         method: POST
@@ -57,7 +57,7 @@
       register: failover_response
       no_log: true
 
-    - name: Validate failover response
+    - name: Validate Failover Response
       ansible.builtin.assert:
         that:
           - failover_response.json is defined
@@ -73,23 +73,23 @@
           Transaction ID:
           {{ failover_response.json.id }}.
 
-    - name: Save failover transaction ID
+    - name: Save Failover Transaction ID
       ansible.builtin.set_fact:
         failover_transaction_id: "{{ failover_response.json.id }}"
       no_log: true
 
-    - name: Capture failover end time
+    - name: Capture Failover End Time
       ansible.builtin.set_fact:
         failover_end_time: "{{ lookup('pipe', 'TZ=Asia/Colombo date +%Y-%m-%dT%H:%M:%S%z') }}"
 
-    - name: Publish failover audit timestamps
+    - name: Publish Failover Audit Timestamps
       ansible.builtin.set_stats:
         data:
           failover_start_time: "{{ failover_start_time }}"
           failover_end_time: "{{ failover_end_time }}"
         per_host: false
 
-    - name: Display failover request details
+    - name: Display Failover Request Details
       ansible.builtin.debug:
         msg:
           - "Failover request: SUCCESSFULLY SUBMITTED"
