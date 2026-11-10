@@ -6,7 +6,7 @@
 
   tasks:
 
-    - name: Validate service list received from previous workflow job
+    - name: Validate Service List Received from Previous Workflow Job
       ansible.builtin.assert:
         that:
           - services_to_stop is defined
@@ -17,17 +17,17 @@
           Received service list successfully:
           {{ services_to_stop }}
 
-    - name: Start services received from previous workflow job
+    - name: Start Services Received From Previous Workflow Job
       ansible.builtin.systemd_service:
         name: "{{ item }}"
         state: started
       loop: "{{ services_to_stop }}"
       register: service_start_results
 
-    - name: Gather service facts after starting services
+    - name: Gather Service Facts After Starting Services
       ansible.builtin.service_facts:
 
-    - name: Validate services are running
+    - name: Validate Services are Running
       ansible.builtin.assert:
         that:
           - item in ansible_facts.services
@@ -42,13 +42,13 @@
           {{ inventory_hostname }}.
       loop: "{{ services_to_stop }}"
 
-    - name: Capture service up time
+    - name: Capture Service Up Time
       ansible.builtin.set_stats:
         data:
           service_up_time: "{{ lookup('pipe', 'TZ=Asia/Colombo date +%Y-%m-%dT%H:%M:%S%z') }}"
         per_host: false
 
-    - name: Display service start result
+    - name: Display Service Start Result
       ansible.builtin.debug:
         msg:
           - "Host: {{ inventory_hostname }}"
