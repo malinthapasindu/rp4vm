@@ -1,11 +1,11 @@
 ---
-- name: RP4VM consistency group validation
+- name: RP4VM Consistency Group Validation
   hosts: localhost
   gather_facts: false
 
   tasks:
 
-    - name: Validate RP4VM credential variables
+    - name: Validate RP4VM Credential Variables
       ansible.builtin.assert:
         that:
           - rp4vm_host is defined
@@ -15,23 +15,23 @@
           - rp4vm_password is defined
           - rp4vm_password | length > 0
         fail_msg: >-
-          RP4VM credential variables are missing.
-          Attach the RP4VM credential to the AAP Job Template.
+          RP4VM Credential Variables are Missing.
+          Attach the RP4VM Credential to the AAP Job Template.
       no_log: true
 
-    - name: Validate consistency group input
+    - name: Validate Consistency Group Input
       ansible.builtin.assert:
         that:
           - consistency_group_name is defined
           - consistency_group_name | trim | length > 0
         fail_msg: >-
-          The consistency group name was not provided.
-          Select the consistency group when launching the workflow.
+          The Consistency Group Name was not Provided.
+          Select the Consistency Group When Launching the Workflow.
         success_msg: >-
           Consistency group input received:
           {{ consistency_group_name }}
 
-    - name: Retrieve consistency groups from RP4VM
+    - name: Retrieve Consistency Groups from RP4VM
       ansible.builtin.uri:
         url: "https://{{ rp4vm_host }}/api/v1/groups"
         method: GET
@@ -47,7 +47,7 @@
       register: rp4vm_groups_response
       no_log: true
 
-    - name: Normalize RP4VM consistency group response
+    - name: Normalize RP4VM Consistency Group Response
       ansible.builtin.set_fact:
         rp4vm_groups: >-
           {{
@@ -60,7 +60,7 @@
           }}
       no_log: true
 
-    - name: Find consistency group entered at launch
+    - name: Find Consistency Group Rntered at Launch
       ansible.builtin.set_fact:
         matched_consistency_groups: >-
           {{
@@ -75,7 +75,7 @@
           }}
       no_log: true
 
-    - name: Validate consistency group exists
+    - name: Validate Consistency Group Exists
       ansible.builtin.assert:
         that:
           - matched_consistency_groups | length == 1
@@ -87,12 +87,12 @@
           Consistency group '{{ consistency_group_name }}'
           was found successfully.
 
-    - name: Save selected consistency group
+    - name: Save Selected Consistency Group
       ansible.builtin.set_fact:
         selected_consistency_group: "{{ matched_consistency_groups[0] }}"
       no_log: true
 
-    - name: Validate selected consistency group ID
+    - name: Validate Selected Consistency Group ID
       ansible.builtin.assert:
         that:
           - selected_consistency_group.id is defined
@@ -100,12 +100,12 @@
         fail_msg: >-
           Selected consistency group does not contain a valid ID.
 
-    - name: Save selected consistency group ID
+    - name: Save Selected Consistency Group ID
       ansible.builtin.set_fact:
         consistency_group_id: "{{ selected_consistency_group.id | string }}"
       no_log: true
 
-    - name: Retrieve RP4VM copies
+    - name: Retrieve RP4VM Copies
       ansible.builtin.uri:
         url: "https://{{ rp4vm_host }}/api/v1/copies"
         method: GET
@@ -121,7 +121,7 @@
       register: rp4vm_copies_response
       no_log: true
 
-    - name: Normalize RP4VM copies response
+    - name: Normalize RP4VM Copies Response
       ansible.builtin.set_fact:
         rp4vm_copies: >-
           {{
@@ -134,7 +134,7 @@
           }}
       no_log: true
 
-    - name: Select copies belonging to selected consistency group
+    - name: Select Copies Belonging to Selected Consistency Group
       ansible.builtin.set_fact:
         selected_cg_copies: >-
           {{
@@ -149,7 +149,7 @@
           }}
       no_log: true
 
-    - name: Select production copy
+    - name: Select Production Copy
       ansible.builtin.set_fact:
         selected_cg_production_copy: >-
           {{
@@ -162,7 +162,7 @@
           }}
       no_log: true
 
-    - name: Select remote replica copy
+    - name: Select Remote Replica Copy
       ansible.builtin.set_fact:
         selected_cg_remote_copy: >-
           {{
@@ -175,7 +175,7 @@
           }}
       no_log: true
 
-    - name: Validate selected consistency group copy health
+    - name: Validate Selected Consistency Group Copy Health
       ansible.builtin.assert:
         that:
           - selected_cg_production_copy | length > 0
@@ -203,7 +203,7 @@
           and remote copy '{{ selected_cg_remote_copy.rpClusterName }}'
           are ready.
 
-    - name: Publish validated RP4VM information to workflow
+    - name: Publish Validated RP4VM Information to Workflow
       ansible.builtin.set_stats:
         data:
           consistency_group_name: "{{ consistency_group_name }}"
@@ -218,7 +218,7 @@
           remote_cluster_name: "{{ selected_cg_remote_copy.rpClusterName }}"
         per_host: false
 
-    - name: Display validation result
+    - name: Display Validation Result
       ansible.builtin.debug:
         msg:
           - "Validation result: SUCCESSFUL"
