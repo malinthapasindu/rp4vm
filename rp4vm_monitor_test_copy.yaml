@@ -5,7 +5,7 @@
 
   tasks:
 
-    - name: Validate monitoring variables
+    - name: Validate Monitoring Variables
       ansible.builtin.assert:
         that:
           - test_copy_transaction_id is defined
@@ -17,7 +17,7 @@
           Test a Copy monitoring variables were not received
           from the previous workflow job.
 
-    - name: Monitor Test a Copy transaction
+    - name: Monitor Test a Copy Transaction
       ansible.builtin.uri:
         url: "https://{{ rp4vm_host }}/api/v1/transactions/{{ test_copy_transaction_id }}"
         method: GET
@@ -40,7 +40,7 @@
       delay: 10
       no_log: true
 
-    - name: Display Test a Copy transaction result
+    - name: Display Test a Copy Transaction Result
       ansible.builtin.debug:
         msg:
           - "Transaction ID: {{ test_copy_transaction.json.id }}"
@@ -51,7 +51,7 @@
             {{ test_copy_transaction.json.progressString
             | default('N/A') }}
 
-    - name: Monitor recovery activity until ready for testing
+    - name: Monitor Recovery Activity Until Ready for Testing
       ansible.builtin.uri:
         url: "https://{{ rp4vm_host }}/api/v1/groups/recovery-activities?copyid={{ remote_copy_id | urlencode }}"
         method: GET
@@ -80,7 +80,7 @@
       delay: 10
       no_log: true
 
-    - name: Save ready recovery activity
+    - name: Save Ready Recovery Activity
       ansible.builtin.set_fact:
         ready_recovery_activity: >-
           {{
@@ -94,7 +94,7 @@
           }}
       no_log: true
 
-    - name: Display recovery activity result
+    - name: Display Recovery Activity Result
       ansible.builtin.debug:
         msg:
           - "Consistency group: {{ consistency_group_name }}"
@@ -104,7 +104,7 @@
           - "Recovery activity status: READY_FOR_TESTING"
           - "Test copy is ready. Failover can continue."
 
-    - name: Publish monitoring result to workflow
+    - name: Publish Monitoring Result to Workflow
       ansible.builtin.set_stats:
         data:
           consistency_group_name: "{{ consistency_group_name }}"
